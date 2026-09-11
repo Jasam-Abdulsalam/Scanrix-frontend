@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Dependency-free approximation of the Google "G" mark, drawn with
 /// [CustomPainter] so the "Continue with Google" button doesn't need an
 /// image asset or an icon-font package for a one-off glyph.
+///
+/// [size] defaults to a `.r`-scaled value (see "Sizing / responsive units"
+/// in CLAUDE.md) — nullable rather than a const default since `.r` isn't a
+/// compile-time constant.
 class GoogleLogo extends StatelessWidget {
-  final double size;
+  final double? size;
 
-  const GoogleLogo({super.key, this.size = 20});
+  const GoogleLogo({super.key, this.size});
 
   @override
   Widget build(BuildContext context) {
+    final s = size ?? 20.r;
     return SizedBox(
-      width: size,
-      height: size,
+      width: s,
+      height: s,
       child: CustomPaint(painter: _GoogleLogoPainter()),
     );
   }

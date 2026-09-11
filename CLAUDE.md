@@ -77,6 +77,34 @@ presentation/
   router/auth-gate yet.
 - `lib/main.dart` — `WidgetsFlutterBinding.ensureInitialized()` → `di.init()` → `runApp`.
 
+### Sizing / responsive units
+
+Every size value (padding, margins, radius, icon/asset dimensions) uses
+`flutter_screenutil` instead of raw `double` literals. `ScreenUtilInit` wraps `MaterialApp`
+in `lib/app.dart` with a `designSize` of `375x812` (iPhone X/11/13-mini frame, the common
+Figma/mobile reference) — change the `_designSize` constant there if designs target a
+different frame.
+
+Convention — use these everywhere instead of bare numbers:
+- `.w` — widths, horizontal padding/margin, horizontal offsets
+- `.h` — heights, vertical padding/margin, vertical offsets
+- `.r` — border radius, blur sigma, and square/uniform sizes (icon size, circle diameter) —
+  scales by `min(scaleWidth, scaleHeight)` so these stay uniform on unusual aspect ratios
+- `.sp` — font size
+
+Reusable widgets in `core/widgets/` (`GlassCard`, `GlassButton`, `GoogleLogo`) take
+**nullable** size parameters instead of literal defaults, because `.w`/`.h`/`.r`/`.sp` return
+runtime values and Dart requires default parameter values to be compile-time constants — the
+scaled default is resolved inside `build()` instead (e.g. `padding ?? EdgeInsets.all(20.r)`).
+Follow that pattern for any new reusable widget that wants a built-in default size.
+
+This is a project convention, not a Flutter/Dart requirement: `flutter_screenutil` scales
+every dimension linearly against the fixed `designSize`, which is simple and consistent but
+not the only valid approach to responsiveness (vs. `MediaQuery`/`LayoutBuilder`-driven
+breakpoints, which adapt layout structure instead of just scaling numbers). Worth
+revisiting if the app grows to support tablets/foldables, where linear scaling from a
+phone-sized reference can look off.
+
 ### Feature ↔ backend endpoint map
 
 | Feature    | Backend route                                  | Notes |

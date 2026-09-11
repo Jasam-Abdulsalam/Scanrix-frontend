@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
@@ -28,70 +29,43 @@ class LoginPage extends StatelessWidget {
         body: AuroraBackground(
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
+              padding: EdgeInsets.symmetric(horizontal: 28.w),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Spacer(flex: 5),
-                  Row(
-                    children: [
-                      Text(
-                        'Smarter',
-                        style: textTheme.headlineMedium?.copyWith(
-                          color: AppColors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.auto_awesome,
-                        color: AppColors.neonEmerald.withValues(alpha: 0.85),
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                  Text(
-                    'Choices',
-                    style: textTheme.headlineMedium?.copyWith(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'For a Healthier You',
-                    style: textTheme.headlineMedium?.copyWith(
-                      color: AppColors.neonEmerald,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Scan. Learn. Live Better.',
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: AppColors.secondaryText,
-                    ),
+                  Image.asset(
+                    'assets/logo.png',
+                    height: 280.h,
+                    fit: BoxFit.contain,
                   ),
                   const Spacer(flex: 4),
-                  GlassButton(
-                    onPressed: () => _continueWithGoogle(context),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const GoogleLogo(size: 20),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Continue with Google',
-                          style: textTheme.titleMedium?.copyWith(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w600,
+                  SizedBox(
+                    width: double.infinity,
+                    child: GlassButton(
+                      onPressed: () => _continueWithGoogle(context),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GoogleLogo(size: 20.r),
+                          SizedBox(width: 12.w),
+                          Text(
+                            'Continue with Google',
+                            style: textTheme.titleMedium?.copyWith(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const Spacer(flex: 2),
-                  _TermsFooter(textTheme: textTheme),
-                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: _TermsFooter(textTheme: textTheme),
+                  ),
+                  SizedBox(height: 16.h),
                 ],
               ),
             ),
