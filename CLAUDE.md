@@ -89,9 +89,29 @@ presentation/
   `DioClient` → `ApiClient` in that order, and calls `ApiClient.loadPersistedToken()` so a
   token from a previous session is attached before the app's first request.
 - `lib/app.dart` — `ScanrixApp`: wraps `MaterialApp` in a `MultiBlocProvider` that pulls
-  every top-level Bloc from `sl`. Currently boots straight to `LoginPage`; there's no
-  router/auth-gate yet.
+  every top-level Bloc from `sl`. **Temporarily boots straight to `HomePage`** (was
+  `LoginPage`) to make the home page easy to preview during development — there's still
+  no router/auth-gate connecting the two. Switch `home:` back to `LoginPage()` once the
+  login flow itself is confirmed working.
 - `lib/main.dart` — `WidgetsFlutterBinding.ensureInitialized()` → `di.init()` → `runApp`.
+
+### Home page (`lib/features/home/presentation/pages/home_page.dart`)
+
+Static UI only, matching the provided design — no navigation wired yet. Tapping "Scan
+Now", any `BottomNavBar` item, or a `QuickActionCard` currently does nothing; their
+destination pages (`ScanPage`, `HistoryPage`, etc.) are still placeholder `Scaffold`s
+anyway. When navigation does get wired, the plan (per earlier discussion, not yet
+implemented) is simple push navigation per nav item rather than a persistent
+`IndexedStack` tab shell — revisit that choice if the app's navigation needs grow.
+
+Only `home/presentation/` exists — no `domain`/`data` layers, since this page has no data
+of its own to fetch (it's a static shell composed from other features' content). Don't add
+those layers speculatively; add them if/when this page actually needs its own use case.
+
+New reusable `core/widgets/`: `PrimaryButton` (solid-emerald CTA — the `GlassButton`
+counterpart for primary actions), `QuickActionCard`, `FloatingScanButton`, `BottomNavBar`
+(composes `FloatingScanButton` internally). The profile avatar is a generic person icon,
+not a real photo — there's no user-photo field or Google-profile-picture wiring yet.
 
 ### Sizing / responsive units
 

@@ -5,8 +5,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'core/di/injection_container.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
-import 'features/auth/presentation/pages/login_page.dart';
 import 'features/history/presentation/bloc/history_bloc.dart';
+import 'features/home/presentation/pages/home_page.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
 import 'features/scan/presentation/bloc/scan_bloc.dart';
 
@@ -32,7 +32,11 @@ class ScanrixApp extends StatelessWidget {
         builder: (context, child) => MaterialApp(
           title: 'Scanrix',
           theme: AppTheme.dark,
-          home: const LoginPage(),
+          // TODO(temporary): booted straight to HomePage per request, to
+          // preview it during development. Switch back to `LoginPage()`
+          // once the login flow itself is confirmed working — there's
+          // still no auth-gate wiring the two together.
+          home: const HomePage(),
         ),
       ),
     );
