@@ -60,18 +60,34 @@ presentation/
 - `lib/core/constants/api_constants.dart` — base URL + every endpoint path, kept in sync
   with the backend's `app/api/v1/api.py` route prefixes (`/auth`, `/products`, `/scan`,
   `/history`). **Update `baseUrl` here** to point at wherever the backend is actually
-  running.
+  running. Paths only, no logic — use cases call the backend through `ApiClient`, below,
+  never by touching Dio directly.
+- `lib/core/network/api_client.dart` — **the thing every use case actually calls.**
+  `ApiClient.get/post/put/delete(path, ...)` takes an `ApiConstants` path (not a full
+  URL), and in one place handles what would otherwise be duplicated per use case: builds
+  the full `Uri` (base URL + path + query params), sends the request through `DioClient`,
+  unwraps `response.data`, and maps `DioException` to `ServerException`/`NetworkException`
+  consistently. Also exposes `setToken`/`clearToken`/`loadPersistedToken`, which just
+  delegate to `DioClient` — see "Google Sign-In" below for how a use case calls these
+  after a successful login. So far only `GoogleLoginUseCase` goes through this;
+  `LoginUseCase`/`RegisterUseCase` are still stubs (see "Status" below).
+- `lib/core/network/dio_client.dart` — lower-level than `ApiClient`; owns the raw `Dio`
+  instance (base URL, timeouts), the Bearer-token interceptor, and a `TokenStorage`.
+  Use cases should go through `ApiClient`, not this, directly.
 - `lib/core/usecase/usecase.dart` — `abstract class UseCase<R, Params> { Future<R> call(Params params); }`.
   Every use case implements this so Blocs can call them uniformly.
-- `lib/core/error/exceptions.dart` — `ServerException`, `NetworkException`. Use cases are
-  expected to throw these once networking is wired up; Blocs already catch generic
-  exceptions in their event handlers and map them to a `*Failure` state.
-- `lib/core/network/dio_client.dart` — currently just a `TODO` comment. This is where the
-  shared Dio instance (base options, JWT bearer interceptor) is meant to go.
+- `lib/core/error/exceptions.dart` — `ServerException`, `NetworkException`, thrown by
+  `ApiClient` on failed backend calls (or directly by a use case for a non-network failure,
+  e.g. Google Sign-In being cancelled). Blocs already catch generic exceptions in their
+  event handlers and map them to a `*Failure` state.
+- `lib/core/storage/token_storage.dart` — wraps `flutter_secure_storage` to persist the
+  JWT (Keychain/Keystore, not `shared_preferences` — a JWT is a bearer credential and
+  shouldn't sit in unencrypted storage). Owned by `DioClient`; reached through `ApiClient`.
 - `lib/core/di/injection_container.dart` — `final sl = GetIt.instance;` plus `Future<void> init()`,
   called once from `main()` before `runApp`. Registers every use case
-  (`registerLazySingleton`) and every Bloc (`registerFactory`). When Dio is added, register
-  it here first and inject it into use case constructors.
+  (`registerLazySingleton`) and every Bloc (`registerFactory`), registers `TokenStorage` →
+  `DioClient` → `ApiClient` in that order, and calls `ApiClient.loadPersistedToken()` so a
+  token from a previous session is attached before the app's first request.
 - `lib/app.dart` — `ScanrixApp`: wraps `MaterialApp` in a `MultiBlocProvider` that pulls
   every top-level Bloc from `sl`. Currently boots straight to `LoginPage`; there's no
   router/auth-gate yet.
@@ -109,16 +125,86 @@ phone-sized reference can look off.
 
 | Feature    | Backend route                                  | Notes |
 |------------|-------------------------------------------------|-------|
-| `auth`     | `POST /auth/register`, `POST /auth/login`       | `AuthTokenEntity` mirrors the `Token` schema; login doesn't yet persist the token anywhere (no secure storage set up). |
+| `auth`     | `POST /auth/register`, `POST /auth/login`, `POST /auth/google` | `AuthTokenEntity` mirrors the `Token` schema. `/auth/google` is the only auth path actually wired to the network so far — see "Google Sign-In" below. |
 | `products` | `GET /products/{barcode}`                       | `ProductEntity.isAnalyzing` is true when `verdict == "analyzing"` — the backend runs AI analysis as a background task, so the product page is expected to **poll** this endpoint until the verdict flips (see backend's scan flow docs). Polling isn't implemented yet. |
 | `scan`     | `POST /scan/`, `POST /scan/analyze-text`        | `analyze-text` is the OCR path — synchronous, nothing persisted server-side. Its response is `{"success": bool, "analysis": {...}}`; `TextAnalysisModel.fromJson` expects the inner `analysis` object directly, not the wrapper — the use case will need to unwrap `["analysis"]` before parsing. |
 | `history`  | `GET /history/?limit=`                          | `ScanHistoryEntity` mirrors `history_helper()`'s dict, not a Pydantic schema (backend returns `List[dict]`). |
 
+### Google Sign-In
+
+The only auth path that's actually networked end-to-end so far. Flow:
+`login_page.dart`'s "Continue with Google" button dispatches `AuthGoogleLoginRequested` →
+`AuthBloc` calls `GoogleLoginUseCase` → that runs the native Google Sign-In flow
+(`google_sign_in` v7's `GoogleSignIn.instance.authenticate()`) to get a Google ID token,
+POSTs it to the backend's `POST /auth/google`, and returns the same `AuthTokenEntity`
+shape `LoginUseCase` would — the backend issues its own JWT either way, so the Bloc emits
+the existing `AuthLoginSuccess`/`AuthFailure` states, no new state types needed.
+
+This required standing up `DioClient`/`ApiClient` for real (both were `TODO` placeholders)
+and registering them in `injection_container.dart`, but **only for `GoogleLoginUseCase`**
+— `LoginUseCase` and `RegisterUseCase` deliberately still throw `UnimplementedError`;
+wiring those up to `ApiClient` too is still "the main next step" below, just not done as
+part of this. `GoogleLoginUseCase` calls `apiClient.post(ApiConstants.googleLogin, ...)`
+and, on success, `apiClient.setToken(...)` — it never touches `DioClient` directly.
+
+`google_sign_in: ^7.2.0` uses the newer singleton API: `GoogleSignIn.instance.initialize(...)`
+must be awaited exactly once before any other call — done in
+`injection_container.dart::init()`, before `AuthBloc`/`GoogleLoginUseCase` are registered.
+
+**Setup required before this actually works** (nothing here works with real Google
+accounts until this is done):
+1. In Google Cloud Console, create an OAuth consent screen and three OAuth client IDs:
+   **Web**, **Android** (package `com.scanrix.scanrix_frontend` + your signing
+   certificate's SHA-1 — get it via `cd android && ./gradlew signingReport`), and **iOS**
+   (bundle ID).
+2. Put the **Web** client ID in `core/constants/google_auth_config.dart`
+   (`GoogleAuthConfig.webClientId`) — it's used as `serverClientId` on every platform,
+   which is what makes the ID token's `aud` claim match. The backend's `.env`
+   `GOOGLE_CLIENT_ID` (see `../scanrix-backend/CLAUDE.md`) must be the exact same Web
+   client ID — the two sides verify against each other.
+3. iOS only: add the reversed iOS client ID as a URL scheme in
+   `ios/Runner/Info.plist`:
+   ```xml
+   <key>CFBundleURLTypes</key>
+   <array>
+     <dict>
+       <key>CFBundleURLSchemes</key>
+       <array>
+         <string>com.googleusercontent.apps.YOUR_IOS_CLIENT_ID</string>
+       </array>
+     </dict>
+   </array>
+   ```
+   No Android manifest changes are needed for this plugin version — Android verifies via
+   Play Services against the package name + SHA-1 registered in step 1.
+4. Known nuance to watch for once real credentials are in: Google's ID token audience
+   handling differs slightly by platform (iOS can issue tokens audienced to the iOS
+   client rather than the Web one). If the backend rejects a real iOS sign-in with an
+   audience mismatch, the fix is on the backend side (accept the iOS client ID as an
+   additional valid audience) — don't work around it by relaxing verification on the
+   frontend.
+
+The JWT is now persisted: `core/storage/token_storage.dart` wraps `flutter_secure_storage`
+(Keychain/Keystore — deliberately not `shared_preferences`, since a JWT is a bearer
+credential and shouldn't sit in unencrypted storage). `DioClient` owns the `TokenStorage`
+and attaches `Authorization: Bearer <token>` to every request via an interceptor once a
+token is set; `ApiClient` exposes `setToken`/`clearToken`/`loadPersistedToken` as thin
+delegates to `DioClient`, since use cases only ever talk to `ApiClient`.
+`GoogleLoginUseCase` calls `apiClient.setToken(...)` right after a successful
+`/auth/google` response; `injection_container.dart::init()` calls
+`apiClient.loadPersistedToken()` right after registering `ApiClient`, so a token from a
+previous session is already attached before the first request of a new app launch. There's
+still no routing/auth-gate (see below) — a persisted token doesn't currently skip
+`LoginPage`, it only means requests are pre-authenticated once you do navigate somewhere
+that calls the API.
+
 ## Status / what's not done yet
 
-- **No Dio (or any HTTP client) dependency added.** Every use case's `call()` throws
-  `UnimplementedError`. This is the main next step.
-- No token storage (e.g. `flutter_secure_storage`) — nothing persists the JWT from login yet.
+- **`ApiClient`/`DioClient` are wired for `GoogleLoginUseCase` only** (see "Google Sign-In"
+  above). `LoginUseCase.call()` and `RegisterUseCase.call()` still throw
+  `UnimplementedError` — wiring those through `ApiClient` the same way is the main next step.
+- Token storage exists (`flutter_secure_storage`, see "Google Sign-In" above) but nothing
+  reads it to skip `LoginPage` on a fresh launch — there's no auth-gate yet (next bullet).
 - No routing package — `app.dart` hardcodes `home: const LoginPage()`. Navigation between
   auth → scan → product detail → history isn't wired.
 - Pages (`login_page.dart`, `register_page.dart`, `scan_page.dart`,

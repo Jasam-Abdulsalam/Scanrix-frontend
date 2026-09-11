@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/usecase/usecase.dart';
+import '../../domain/usecases/google_login_usecase.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import 'auth_event.dart';
@@ -8,13 +10,16 @@ import 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
   final RegisterUseCase registerUseCase;
+  final GoogleLoginUseCase googleLoginUseCase;
 
   AuthBloc({
     required this.loginUseCase,
     required this.registerUseCase,
+    required this.googleLoginUseCase,
   }) : super(AuthInitial()) {
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthRegisterRequested>(_onRegisterRequested);
+    on<AuthGoogleLoginRequested>(_onGoogleLoginRequested);
   }
 
   Future<void> _onLoginRequested(
@@ -46,6 +51,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         ),
       );
       emit(AuthRegisterSuccess(user));
+    } catch (e) {
+      emit(AuthFailure(e.toString()));
+    }
+  }
+
+  Future<void> _onGoogleLoginRequested(
+    AuthGoogleLoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final token = await googleLoginUseCase(const NoParams());
+      emit(AuthLoginSuccess(token));
     } catch (e) {
       emit(AuthFailure(e.toString()));
     }

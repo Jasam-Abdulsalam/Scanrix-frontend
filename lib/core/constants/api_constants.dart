@@ -10,6 +10,7 @@ class ApiConstants {
   // auth
   static const String register = '/auth/register';
   static const String login = '/auth/login';
+  static const String googleLogin = '/auth/google';
 
   // products
   static String productByBarcode(String barcode) => '/products/$barcode';
