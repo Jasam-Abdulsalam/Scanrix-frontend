@@ -1,54 +1,61 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
 import '../theme/app_colors.dart';
 
-/// Frosted-glass container: blurred backdrop, translucent dark fill, and a
-/// faint emerald border. Base building block for glassmorphic surfaces
-/// (cards, sheets) across the app.
-///
-/// [padding], [borderRadius] and [blurSigma] default to `.r`-scaled values
-/// (see "Sizing / responsive units" in CLAUDE.md) — they're nullable rather
-/// than const defaults because `.r` isn't a compile-time constant.
+/// Frosted-glass card: blurred translucent fill, gradient border sheen,
+/// and a soft outer glow — matches the target's "glass panel" look
+/// instead of a flat solid rectangle.
 class GlassCard extends StatelessWidget {
+  final EdgeInsetsGeometry padding;
   final Widget child;
-  final EdgeInsetsGeometry? padding;
-  final BorderRadius? borderRadius;
-  final Color? fillColor;
-  final Color? borderColor;
-  final double? blurSigma;
+  final double? borderRadius;
 
   const GlassCard({
     super.key,
+    required this.padding,
     required this.child,
-    this.padding,
     this.borderRadius,
-    this.fillColor,
-    this.borderColor,
-    this.blurSigma,
   });
 
   @override
   Widget build(BuildContext context) {
-    final radius = borderRadius ?? BorderRadius.circular(24.r);
-    final sigma = blurSigma ?? 20.r;
+    final radius = borderRadius ?? 24.r;
 
-    return ClipRRect(
-      borderRadius: radius,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-        child: Container(
-          padding: padding ?? EdgeInsets.all(20.r),
-          decoration: BoxDecoration(
-            color: fillColor ?? AppColors.glassFill.withValues(alpha: 0.48),
-            borderRadius: radius,
-            border: Border.all(
-              color: borderColor ?? AppColors.glassBorder.withValues(alpha: 0.16),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.neonEmerald.withValues(alpha: 0.06),
+            blurRadius: 40,
+            spreadRadius: 4,
           ),
-          child: child,
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.06),
+                  AppColors.glassFill.withValues(alpha: 0.55),
+                ],
+              ),
+              border: Border.all(
+                color: AppColors.neonEmerald.withValues(alpha: 0.20),
+                width: 1,
+              ),
+            ),
+            child: child,
+          ),
         ),
       ),
     );

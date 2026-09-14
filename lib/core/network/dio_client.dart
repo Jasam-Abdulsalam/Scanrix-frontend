@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import '../constants/api_constants.dart';
 import '../storage/token_storage.dart';
@@ -19,7 +20,7 @@ class DioClient {
             receiveTimeout: const Duration(seconds: 15),
           ),
         ) {
-    dio.interceptors.add(
+    dio.interceptors.addAll([
       InterceptorsWrapper(
         onRequest: (options, handler) {
           if (_accessToken != null) {
@@ -28,7 +29,16 @@ class DioClient {
           handler.next(options);
         },
       ),
-    );
+      PrettyDioLogger(
+        requestHeader: true,
+        requestBody: true,
+        responseBody: true,
+        responseHeader: false,
+        error: true,
+        compact: true,
+        maxWidth: 90,
+      ),
+    ]);
   }
 
   /// Loads any previously-persisted token into memory. Call once at

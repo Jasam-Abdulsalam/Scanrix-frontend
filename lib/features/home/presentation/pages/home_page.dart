@@ -38,17 +38,7 @@ class HomePage extends StatelessWidget {
                             SizedBox(height: 24.h),
                             const _ScanHealthProductCard(),
                             SizedBox(height: 28.h),
-                            const _SectionHeader(title: 'Get Started'),
-                            SizedBox(height: 6.h),
-                            Text(
-                              'Scan any health product to see its ingredients and '
-                              'get an instant health score.',
-                              style: TextStyle(
-                                color: AppColors.secondaryText,
-                                fontSize: 13.sp,
-                                height: 1.4,
-                              ),
-                            ),
+                         
                             SizedBox(height: 28.h),
                             const _SectionHeader(title: 'Quick Actions'),
                             SizedBox(height: 14.h),
@@ -229,133 +219,219 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
-
 class _ScanHealthProductCard extends StatelessWidget {
   const _ScanHealthProductCard();
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      padding: EdgeInsets.all(20.r),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            right: -10.w,
-            bottom: -16.h,
-            child: Opacity(
-              opacity: 0.5,
-              child: SizedBox(
-                width: 110.r,
-                height: 90.r,
-                child: Stack(
-                  children: [
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: _bubble(70.r, AppColors.neonEmerald.withValues(alpha: 0.10)),
+    final radius = 25.r;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF25E28B).withValues(alpha: 0.10),
+            blurRadius: 35,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: Stack(
+          children: [
+            // ---------------------------------------------------------
+            // CARD BACKGROUND
+            // ---------------------------------------------------------
+            Container(
+              padding: EdgeInsets.fromLTRB(
+                20.w,
+                20.h,
+                20.w,
+                20.h,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF183A2B).withValues(alpha: 0.72),
+                    const Color(0xFF0D2118).withValues(alpha: 0.82),
+                    const Color(0xFF07120D).withValues(alpha: 0.88),
+                  ],
+                  stops: const [
+                    0.0,
+                    0.48,
+                    1.0,
+                  ],
+                ),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.48),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ---------------------------------------------------
+                  // LABEL
+                  // ---------------------------------------------------
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.crop_free_rounded,
+                        color: AppColors.neonEmerald,
+                        size: 18.r,
+                      ),
+                      SizedBox(width: 10.w),
+                      Text(
+                        'SCAN HEALTH PRODUCT',
+                        style: TextStyle(
+                          color: AppColors.neonEmerald,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 16.h),
+
+                  // ---------------------------------------------------
+                  // TITLE
+                  // ---------------------------------------------------
+                  Text(
+                    'Scan Health Product',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w700,
+                      height: 1.15,
                     ),
-                    Positioned(
-                      right: 34.w,
-                      bottom: 30.h,
-                      child: _bubble(38.r, AppColors.neonEmerald.withValues(alpha: 0.16)),
-                    ),
-                    Positioned(
-                      right: 44.w,
-                      bottom: 46.h,
-                      child: Icon(
-                        Icons.eco_rounded,
-                        color: AppColors.neonEmerald.withValues(alpha: 0.55),
-                        size: 20.r,
+                  ),
+
+                  SizedBox(height: 10.h),
+
+                  // ---------------------------------------------------
+                  // DESCRIPTION
+                  // ---------------------------------------------------
+                  SizedBox(
+                    width: 0.78.sw,
+                    child: Text(
+                      'Scan any health or skincare product to instantly '
+                      'view ingredients and get a health score.',
+                      style: TextStyle(
+                        color: const Color(0xFFA5C3B7),
+                        fontSize: 13.sp,
+                        height: 1.45,
                       ),
                     ),
-                  ],
+                  ),
+
+                  SizedBox(height: 18.h),
+
+                  // ---------------------------------------------------
+                  // BUTTON
+                  // ---------------------------------------------------
+                  PrimaryButton(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.crop_free_rounded,
+                          size: 18.r,
+                        ),
+                        SizedBox(width: 9.w),
+                        Text(
+                          'Scan Now',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ---------------------------------------------------------
+            // SOFT INTERNAL GREEN GLOW
+            // ---------------------------------------------------------
+            Positioned(
+              right: -80.w,
+              bottom: -90.h,
+              child: IgnorePointer(
+                child: Container(
+                  width: 220.r,
+                  height: 220.r,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppColors.neonEmerald.withValues(alpha: 0.16),
+                        AppColors.neonEmerald.withValues(alpha: 0.04),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-                decoration: BoxDecoration(
-                  color: AppColors.neonEmerald.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(
-                    color: AppColors.neonEmerald.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.crop_free_rounded,
-                      color: AppColors.neonEmerald,
-                      size: 12.r,
-                    ),
-                    SizedBox(width: 6.w),
-                    Text(
-                      'SCAN HEALTH PRODUCT',
-                      style: TextStyle(
-                        color: AppColors.neonEmerald,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 14.h),
-              Text(
-                'Scan Health Product',
-                style: TextStyle(
-                  color: AppColors.white,
-                  fontSize: 19.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 8.h),
-              Text(
-                'Scan any health or skincare product to instantly view '
-                'ingredients and get a health score.',
-                style: TextStyle(
-                  color: AppColors.secondaryText,
-                  fontSize: 13.sp,
-                  height: 1.4,
-                ),
-              ),
-              SizedBox(height: 18.h),
-              SizedBox(
-                width: double.infinity,
-                child: PrimaryButton(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.crop_free_rounded, size: 16.r),
-                      SizedBox(width: 8.w),
-                      Text('Scan Now', style: TextStyle(fontSize: 14.sp)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+
+            // ---------------------------------------------------------
+            // GLASS BUBBLES
+          
+          ],
+        ),
       ),
     );
   }
 
-  Widget _bubble(double size, Color color) {
+  Widget _glassBubble(double size) {
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color,
-        border: Border.all(color: AppColors.neonEmerald.withValues(alpha: 0.18)),
+        gradient: RadialGradient(
+          center: const Alignment(-0.35, -0.4),
+          radius: 0.9,
+          colors: [
+            Colors.white.withValues(alpha: 0.30),
+            AppColors.neonEmerald.withValues(alpha: 0.18),
+            AppColors.forestGreen.withValues(alpha: 0.22),
+            const Color(0xFF07150E).withValues(alpha: 0.30),
+          ],
+          stops: const [
+            0.0,
+            0.18,
+            0.58,
+            1.0,
+          ],
+        ),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.neonEmerald.withValues(alpha: 0.20),
+            blurRadius: 16,
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 10,
+            offset: const Offset(3, 5),
+          ),
+        ],
       ),
     );
   }

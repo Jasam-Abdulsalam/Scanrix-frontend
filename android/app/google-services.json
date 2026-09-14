@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "849448109118",
+    "project_id": "scanrix-a5602",
+    "storage_bucket": "scanrix-a5602.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:849448109118:android:81f436f51870820d9cbd6f",
+        "android_client_info": {
+          "package_name": "com.scanrix.scanrix_frontend"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "849448109118-950gshnor95rlaav5484r26mta4ollkb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.scanrix.scanrix_frontend",
+            "certificate_hash": "adce8e142fd2d6ea35ce5af3645dd8b87d69f3a7"
+          }
+        },
+        {
+          "client_id": "849448109118-hb49panp6ov8mn7ue9rsbf6b6500i6k9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbH6OYN8EN-ASwkYwQerybrIeGgeYADYE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "849448109118-hb49panp6ov8mn7ue9rsbf6b6500i6k9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

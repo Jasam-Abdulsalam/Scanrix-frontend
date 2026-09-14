@@ -17,5 +17,5 @@ class GoogleAuthConfig {
   GoogleAuthConfig._();
 
   static const String webClientId =
-      'REPLACE_WITH_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com';
+      '849448109118-hb49panp6ov8mn7ue9rsbf6b6500i6k9.apps.googleusercontent.com';
 }

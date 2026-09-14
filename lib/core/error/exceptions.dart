@@ -9,6 +9,9 @@ class ServerException implements Exception {
   final int? statusCode;
 
   const ServerException({required this.message, this.statusCode});
+
+  @override
+  String toString() => message;
 }
 
 /// Thrown when there is no network connectivity.
@@ -16,4 +19,8 @@ class NetworkException implements Exception {
   final String message;
 
   const NetworkException({this.message = 'No internet connection'});
+
+  @override
+  String toString() => message;
 }
+

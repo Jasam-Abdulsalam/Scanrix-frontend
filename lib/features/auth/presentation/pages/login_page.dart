@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
 import '../../../../core/widgets/glass_button.dart';
 import '../../../../core/widgets/google_logo.dart';
+import '../../../home/presentation/pages/home_page.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -33,10 +34,8 @@ class LoginPage extends StatelessWidget {
                 SnackBar(content: Text(state.message)),
               );
             } else if (state is AuthLoginSuccess) {
-              // TODO: navigate once routing/an auth gate exists — see
-              // CLAUDE.md "Status / what's not done yet". Nowhere to go yet.
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Signed in with Google')),
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const HomePage()),
               );
             }
           },

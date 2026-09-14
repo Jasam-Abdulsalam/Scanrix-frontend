@@ -1,76 +1,136 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-
 import '../theme/app_colors.dart';
 
-/// Full-screen atmospheric backdrop: a dark vertical gradient (olive-green
-/// top fading through forest green into near-black) with large, softly
-/// blurred emerald glow circles layered on top.
-///
-/// Reusable across screens so the same "premium" atmosphere (first used on
-/// the login screen) can be dropped behind any page.
 class AuroraBackground extends StatelessWidget {
-  final Widget? child;
+  final Widget child;
 
-  const AuroraBackground({super.key, this.child});
+  const AuroraBackground({
+    super.key,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Stack(
-      fit: StackFit.expand,
       children: [
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.oliveGreen,
-                Color(0xFF263A2C),
-                AppColors.background,
-              ],
-              stops: [0.0, 0.32, 0.85],
+        // ------------------------------------------------------------
+        // 1. Deep dark base
+        // ------------------------------------------------------------
+        Container(
+          color: AppColors.background,
+        ),
+
+        // ------------------------------------------------------------
+        // 2. Large upper-right yellow/green ambient glow
+        // ------------------------------------------------------------
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0.85, -0.85),
+                  radius: 1.15,
+                  colors: [
+                    const Color(0xFF9ACB5A).withValues(alpha: 0.38),
+                    const Color(0xFF6FA84F).withValues(alpha: 0.24),
+                    const Color(0xFF2E6B43).withValues(alpha: 0.12),
+                    Colors.transparent,
+                  ],
+                  stops: const [
+                    0.0,
+                    0.28,
+                    0.55,
+                    1.0,
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-        Positioned(
-          top: -140.h,
-          right: -100.w,
-          child: _Glow(diameter: 420.r, color: AppColors.neonEmerald.withValues(alpha: 0.30)),
-        ),
-        Positioned(
-          top: 60.h,
-          left: -160.w,
-          child: _Glow(diameter: 320.r, color: AppColors.forestGreen.withValues(alpha: 0.28)),
-        ),
-        if (child != null) child!,
-      ],
-    );
-  }
-}
 
-class _Glow extends StatelessWidget {
-  final double diameter;
-  final Color color;
-
-  const _Glow({required this.diameter, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return ImageFiltered(
-      imageFilter: ImageFilter.blur(sigmaX: 90.r, sigmaY: 90.r),
-      child: Container(
-        width: diameter,
-        height: diameter,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color, color.withValues(alpha: 0)],
+        // ------------------------------------------------------------
+        // 3. Broad emerald atmosphere across the upper/middle area
+        // ------------------------------------------------------------
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0.15, -0.15),
+                  radius: 1.25,
+                  colors: [
+                    AppColors.neonEmerald.withValues(alpha: 0.12),
+                    AppColors.neonEmerald.withValues(alpha: 0.06),
+                    Colors.transparent,
+                  ],
+                  stops: const [
+                    0.0,
+                    0.42,
+                    1.0,
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
-      ),
+
+        // ------------------------------------------------------------
+        // 4. Very subtle lower-right green reflection
+        // ------------------------------------------------------------
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0.95, 0.45),
+                  radius: 0.9,
+                  colors: [
+                    AppColors.neonEmerald.withValues(alpha: 0.07),
+                    AppColors.neonEmerald.withValues(alpha: 0.025),
+                    Colors.transparent,
+                  ],
+                  stops: const [
+                    0.0,
+                    0.45,
+                    1.0,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // ------------------------------------------------------------
+        // 5. Soft dark falloff toward the bottom
+        // ------------------------------------------------------------
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    AppColors.background.withValues(alpha: 0.12),
+                    AppColors.background.withValues(alpha: 0.42),
+                  ],
+                  stops: const [
+                    0.45,
+                    0.75,
+                    1.0,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // ------------------------------------------------------------
+        // App content
+        // ------------------------------------------------------------
+        child,
+      ],
     );
   }
 }
