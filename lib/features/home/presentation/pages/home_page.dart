@@ -5,14 +5,30 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
 import '../../../../core/widgets/bottom_nav_bar.dart';
-import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/quick_action_card.dart';
+import '../../../profile/presentation/pages/profile_page.dart';
 
-/// Static UI for now — no navigation wired (destination pages are still
-/// placeholders). See CLAUDE.md "Home page" for what's stubbed.
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _currentIndex = 0;
+
+  void _onNavTap(int index) {
+    if (index == 4) {
+      // Profile
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const ProfilePage()),
+      );
+      return;
+    }
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +54,6 @@ class HomePage extends StatelessWidget {
                             SizedBox(height: 24.h),
                             const _ScanHealthProductCard(),
                             SizedBox(height: 28.h),
-                         
                             SizedBox(height: 28.h),
                             const _SectionHeader(title: 'Quick Actions'),
                             SizedBox(height: 14.h),
@@ -68,11 +83,17 @@ class HomePage extends StatelessWidget {
                   ],
                 ),
               ),
-              const Positioned(
+              Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0,
-                child: SafeArea(top: false, child: BottomNavBar(currentIndex: 0)),
+                child: SafeArea(
+                  top: false,
+                  child: BottomNavBar(
+                    currentIndex: _currentIndex,
+                    onTap: _onNavTap,
+                  ),
+                ),
               ),
             ],
           ),
@@ -321,7 +342,7 @@ class _ScanHealthProductCard extends StatelessWidget {
                   // DESCRIPTION
                   // ---------------------------------------------------
                   SizedBox(
-                    width: 0.78.sw,
+                    width: 0.75.sw,
                     child: Text(
                       'Scan any health or skincare product to instantly '
                       'view ingredients and get a health score.',
@@ -387,51 +408,8 @@ class _ScanHealthProductCard extends StatelessWidget {
 
             // ---------------------------------------------------------
             // GLASS BUBBLES
-          
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _glassBubble(double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          center: const Alignment(-0.35, -0.4),
-          radius: 0.9,
-          colors: [
-            Colors.white.withValues(alpha: 0.30),
-            AppColors.neonEmerald.withValues(alpha: 0.18),
-            AppColors.forestGreen.withValues(alpha: 0.22),
-            const Color(0xFF07150E).withValues(alpha: 0.30),
-          ],
-          stops: const [
-            0.0,
-            0.18,
-            0.58,
-            1.0,
-          ],
-        ),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.18),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.neonEmerald.withValues(alpha: 0.20),
-            blurRadius: 16,
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 10,
-            offset: const Offset(3, 5),
-          ),
-        ],
       ),
     );
   }

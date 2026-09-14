@@ -9,7 +9,7 @@ void main() {
   });
 
   testWidgets('App builds without throwing', (WidgetTester tester) async {
-    await tester.pumpWidget(const ScanrixApp());
+    await tester.pumpWidget(const ScanrixApp(isAuthenticated: false));
     expect(find.byType(ScanrixApp), findsOneWidget);
   });
 }

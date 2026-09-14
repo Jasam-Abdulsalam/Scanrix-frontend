@@ -16,6 +16,8 @@ class ApiClient {
 
   ApiClient({required this.dioClient});
 
+  bool get isAuthenticated => dioClient.isAuthenticated;
+
   Future<dynamic> get(String path, {Map<String, dynamic>? queryParameters}) {
     return _send(() => dioClient.dio.getUri(_uri(path, queryParameters)));
   }

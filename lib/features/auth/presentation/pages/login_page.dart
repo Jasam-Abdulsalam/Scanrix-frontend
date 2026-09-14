@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
 import '../../../../core/widgets/glass_button.dart';
 import '../../../../core/widgets/google_logo.dart';
+import '../../../home/presentation/pages/create_account_page.dart';
 import '../../../home/presentation/pages/home_page.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
@@ -34,9 +35,17 @@ class LoginPage extends StatelessWidget {
                 SnackBar(content: Text(state.message)),
               );
             } else if (state is AuthLoginSuccess) {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const HomePage()),
-              );
+              if (state.token.isNewUser) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => const CreateAccountPage(),
+                  ),
+                );
+              } else {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const HomePage()),
+                );
+              }
             }
           },
           builder: (context, state) {

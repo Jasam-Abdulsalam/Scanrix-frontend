@@ -46,6 +46,7 @@ Future<void> init() async {
       loginUseCase: sl(),
       registerUseCase: sl(),
       googleLoginUseCase: sl(),
+      apiClient: sl(),
     ),
   );
   sl.registerLazySingleton(() => LoginUseCase());

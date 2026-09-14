@@ -11,6 +11,8 @@ class DioClient {
   final TokenStorage tokenStorage;
   String? _accessToken;
 
+  bool get isAuthenticated => _accessToken != null && _accessToken!.isNotEmpty;
+
   DioClient({TokenStorage? tokenStorage})
       : tokenStorage = tokenStorage ?? TokenStorage(),
         dio = Dio(

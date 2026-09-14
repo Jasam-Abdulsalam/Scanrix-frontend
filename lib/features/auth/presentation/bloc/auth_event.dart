@@ -35,3 +35,7 @@ class AuthRegisterRequested extends AuthEvent {
   @override
   List<Object?> get props => [email, password, name];
 }
+
+class AuthLogoutRequested extends AuthEvent {
+  const AuthLogoutRequested();
+}

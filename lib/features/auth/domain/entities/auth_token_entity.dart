@@ -4,12 +4,14 @@ import 'package:equatable/equatable.dart';
 class AuthTokenEntity extends Equatable {
   final String accessToken;
   final String tokenType;
+  final bool isNewUser;
 
   const AuthTokenEntity({
     required this.accessToken,
     this.tokenType = 'bearer',
+    this.isNewUser = false,
   });
 
   @override
-  List<Object?> get props => [accessToken, tokenType];
+  List<Object?> get props => [accessToken, tokenType, isNewUser];
 }
