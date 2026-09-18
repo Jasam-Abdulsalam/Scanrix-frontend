@@ -4,4 +4,9 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Allows the debug build to reach the local dev backend over plain
+         HTTP (see ApiConstants.baseUrl) — Android 9+ blocks cleartext
+         traffic by default otherwise. Debug-only; never merged into release. -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
 </manifest>

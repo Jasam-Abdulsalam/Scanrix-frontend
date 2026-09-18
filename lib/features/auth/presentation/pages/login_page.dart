@@ -7,11 +7,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
 import '../../../../core/widgets/glass_button.dart';
 import '../../../../core/widgets/google_logo.dart';
-import '../../../home/presentation/pages/create_account_page.dart';
 import '../../../home/presentation/pages/home_page.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+import 'create_account_page.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -31,14 +31,22 @@ class LoginPage extends StatelessWidget {
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is AuthFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message)));
             } else if (state is AuthLoginSuccess) {
-              if (state.token.isNewUser) {
+              // Keyed off profileCompleted (persisted server-side), not
+              // isNewUser — isNewUser is only ever true on the exact
+              // request that creates the account, so it can't detect
+              // "signed in again, still hasn't finished onboarding".
+              if (!state.token.profileCompleted) {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (_) => const CreateAccountPage(),
+                    builder: (_) => CreateAccountPage(
+                      initialName: state.token.displayName,
+                      photoUrl: state.token.photoUrl,
+                      email: state.token.email,
+                    ),
                   ),
                 );
               } else {
@@ -68,8 +76,9 @@ class LoginPage extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         child: GlassButton(
-                          onPressed:
-                              isLoading ? null : () => _continueWithGoogle(context),
+                          onPressed: isLoading
+                              ? null
+                              : () => _continueWithGoogle(context),
                           child: isLoading
                               ? SizedBox(
                                   width: 20.r,
@@ -120,7 +129,9 @@ class _TermsFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseStyle = textTheme.bodySmall?.copyWith(color: AppColors.secondaryText);
+    final baseStyle = textTheme.bodySmall?.copyWith(
+      color: AppColors.secondaryText,
+    );
     final linkStyle = baseStyle?.copyWith(
       color: AppColors.neonEmerald,
       decoration: TextDecoration.underline,

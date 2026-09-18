@@ -1,9 +1,13 @@
 import 'package:get_it/get_it.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../features/auth/domain/usecases/delete_account_usecase.dart';
+import '../../features/auth/domain/usecases/get_current_user_usecase.dart';
 import '../../features/auth/domain/usecases/google_login_usecase.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
+import '../../features/auth/domain/usecases/update_profile_usecase.dart';
+import '../../features/auth/domain/usecases/upload_profile_photo_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/history/domain/usecases/get_scan_history_usecase.dart';
 import '../../features/history/presentation/bloc/history_bloc.dart';
@@ -46,12 +50,20 @@ Future<void> init() async {
       loginUseCase: sl(),
       registerUseCase: sl(),
       googleLoginUseCase: sl(),
+      updateProfileUseCase: sl(),
+      uploadProfilePhotoUseCase: sl(),
+      getCurrentUserUseCase: sl(),
+      deleteAccountUseCase: sl(),
       apiClient: sl(),
     ),
   );
   sl.registerLazySingleton(() => LoginUseCase());
   sl.registerLazySingleton(() => RegisterUseCase());
   sl.registerLazySingleton(() => GoogleLoginUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => GetCurrentUserUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => UpdateProfileUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => UploadProfilePhotoUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => DeleteAccountUseCase(apiClient: sl()));
 
   // ---------------- Products ----------------
   sl.registerFactory(

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only: permits plain HTTP (cleartext) traffic so the app can reach a
+  local backend (e.g. http://192.168.1.9:8000, see ApiConstants.baseUrl)
+  during development. Lives under src/debug so it is never merged into a
+  release build — release traffic must stay HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

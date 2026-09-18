@@ -46,6 +46,16 @@ class ApiClient {
     return _send(() => dioClient.dio.deleteUri(_uri(path, queryParameters)));
   }
 
+  Future<dynamic> patch(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+  }) {
+    return _send(
+      () => dioClient.dio.patchUri(_uri(path, queryParameters), data: data),
+    );
+  }
+
   /// Loads any previously-persisted token into memory. Call once at
   /// startup (after registering this client) so requests made right after
   /// launch are already authenticated.

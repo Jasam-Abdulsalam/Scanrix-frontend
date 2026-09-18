@@ -44,7 +44,16 @@ class GoogleLoginUseCase implements UseCase<AuthTokenEntity, NoParams> {
       ApiConstants.googleLogin,
       data: {'id_token': idToken},
     );
-    final token = AuthTokenModel.fromJson(data as Map<String, dynamic>);
+    // displayName/photoUrl/email aren't part of the backend's Token
+    // response — they come straight from the Google account so a
+    // post-login screen (e.g. CreateAccountPage) can prefill without
+    // re-querying Google.
+    final token = AuthTokenModel.fromJson(data as Map<String, dynamic>)
+        .copyWith(
+          displayName: account.displayName,
+          photoUrl: account.photoUrl,
+          email: account.email,
+        );
     await apiClient.setToken(token.accessToken);
     return token;
   }

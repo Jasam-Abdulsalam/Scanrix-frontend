@@ -5,9 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'core/di/injection_container.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
-import 'features/auth/presentation/pages/login_page.dart';
 import 'features/history/presentation/bloc/history_bloc.dart';
-import 'features/home/presentation/pages/home_page.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
 import 'features/scan/presentation/bloc/scan_bloc.dart';
 
@@ -16,9 +14,12 @@ import 'features/scan/presentation/bloc/scan_bloc.dart';
 const _designSize = Size(375, 812);
 
 class ScanrixApp extends StatelessWidget {
-  final bool isAuthenticated;
+  /// Which page to boot into — resolved in `main.dart` before `runApp`
+  /// (login / complete-profile / home), since that decision needs an
+  /// async `GET /auth/me` call this widget shouldn't own.
+  final Widget home;
 
-  const ScanrixApp({super.key, required this.isAuthenticated});
+  const ScanrixApp({super.key, required this.home});
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +33,8 @@ class ScanrixApp extends StatelessWidget {
       child: ScreenUtilInit(
         designSize: _designSize,
         minTextAdapt: true,
-        builder: (context, child) => MaterialApp(
-          title: 'Scanrix',
-          theme: AppTheme.dark,
-          home: isAuthenticated ? const HomePage() : const LoginPage(),
-        ),
+        builder: (context, child) =>
+            MaterialApp(title: 'Scanrix', theme: AppTheme.dark, home: home),
       ),
     );
   }

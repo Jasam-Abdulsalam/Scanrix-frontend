@@ -42,3 +42,21 @@ class AuthFailure extends AuthState {
 }
 
 class AuthUnauthenticated extends AuthState {}
+
+class AuthProfileCompleteSuccess extends AuthState {
+  final UserEntity user;
+
+  const AuthProfileCompleteSuccess(this.user);
+
+  @override
+  List<Object?> get props => [user];
+}
+
+class AuthCurrentUserLoaded extends AuthState {
+  final UserEntity user;
+
+  const AuthCurrentUserLoaded(this.user);
+
+  @override
+  List<Object?> get props => [user];
+}

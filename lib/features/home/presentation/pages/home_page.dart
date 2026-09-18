@@ -2,33 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/navigation/bottom_nav_navigation.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
 import '../../../../core/widgets/bottom_nav_bar.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/quick_action_card.dart';
-import '../../../profile/presentation/pages/profile_page.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
-
-  void _onNavTap(int index) {
-    if (index == 4) {
-      // Profile
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ProfilePage()),
-      );
-      return;
-    }
-    setState(() => _currentIndex = index);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,8 +72,10 @@ class _HomePageState extends State<HomePage> {
                 child: SafeArea(
                   top: false,
                   child: BottomNavBar(
-                    currentIndex: _currentIndex,
-                    onTap: _onNavTap,
+                    currentIndex: 0,
+                    onTap: (index) =>
+                        handleBottomNavTap(context, index, currentIndex: 0),
+                    onScanPressed: () => handleScanPressed(context),
                   ),
                 ),
               ),
@@ -240,6 +224,7 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
+
 class _ScanHealthProductCard extends StatelessWidget {
   const _ScanHealthProductCard();
 
@@ -266,12 +251,7 @@ class _ScanHealthProductCard extends StatelessWidget {
             // CARD BACKGROUND
             // ---------------------------------------------------------
             Container(
-              padding: EdgeInsets.fromLTRB(
-                20.w,
-                20.h,
-                20.w,
-                20.h,
-              ),
+              padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(radius),
                 gradient: LinearGradient(
@@ -282,11 +262,7 @@ class _ScanHealthProductCard extends StatelessWidget {
                     const Color(0xFF0D2118).withValues(alpha: 0.82),
                     const Color(0xFF07120D).withValues(alpha: 0.88),
                   ],
-                  stops: const [
-                    0.0,
-                    0.48,
-                    1.0,
-                  ],
+                  stops: const [0.0, 0.48, 1.0],
                 ),
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.48),
@@ -363,10 +339,7 @@ class _ScanHealthProductCard extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.crop_free_rounded,
-                          size: 18.r,
-                        ),
+                        Icon(Icons.crop_free_rounded, size: 18.r),
                         SizedBox(width: 9.w),
                         Text(
                           'Scan Now',
