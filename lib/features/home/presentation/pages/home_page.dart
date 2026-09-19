@@ -54,6 +54,7 @@ class HomePage extends StatelessWidget {
                                     icon: Icons.favorite_border_rounded,
                                     title: 'Saved Products',
                                     subtitle: 'Your collection',
+                                    imageAsset: 'assets/images/favorite.png',
                                   ),
                                 ),
                               ],

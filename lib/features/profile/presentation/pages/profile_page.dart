@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,6 +23,9 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  bool _darkMode = true;
+  bool _reminders = false;
+
   @override
   void initState() {
     super.initState();
@@ -43,445 +44,141 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocConsumer<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is AuthUnauthenticated) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginPage()),
-            (_) => false,
-          );
-        } else if (state is AuthFailure) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.message)));
-        }
-      },
-      builder: (context, state) {
-        // AuthBloc is shared app-wide, so this also briefly sees loading/
-        // failure states from unrelated auth actions — only update the
-        // displayed user when we actually have one.
-        final user = state is AuthCurrentUserLoaded
-            ? state.user
-            : (state is AuthProfileCompleteSuccess ? state.user : null);
-        final isLoadingUser = user == null && state is AuthLoading;
-
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle.light,
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: AuroraBackground(
-              child: Stack(
-                children: [
-                  // Positioned.fill pins this to the full screen height
-                  // regardless of content length — a bare SingleChildScrollView
-                  // here would size itself to its own content instead, which
-                  // shrinks the Stack (and drags the Positioned bottom nav up
-                  // with it) whenever the content gets shorter.
-                  Positioned.fill(
-                    child: SafeArea(
-                      bottom: false,
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.only(bottom: 120.h),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // ── Top bar + centered hero ───────────────────
-                            Padding(
-                              padding: EdgeInsets.fromLTRB(24.w, 12.h, 24.w, 0),
-                              child: _TopBar(
-                                onEditTap: () => _openEditProfile(user),
-                              ),
-                            ),
-                            SizedBox(height: 20.h),
-                            _ProfileHero(
-                              user: user,
-                              isLoading: isLoadingUser,
-                              onEditTap: () => _openEditProfile(user),
-                            ),
-                            SizedBox(height: 28.h),
-
-                            // ── Settings list (single sheet) ───────────────
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 24.w),
-                              child: _SettingsSheet(
-                                rows: [
-                                  _SettingsRowData(
-                                    icon: Icons.history_rounded,
-                                    title: 'Scan History',
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const HistoryPage(),
-                                      ),
-                                    ),
-                                  ),
-                                  // _SettingsRowData(
-                                  //   icon: Icons.notifications_none_rounded,
-                                  //   title: 'Notifications',
-                                  //   onTap: () {},
-                                  // ),
-                                  _SettingsRowData(
-                                    icon: Icons.privacy_tip_outlined,
-                                    title: 'Privacy Policy',
-                                    onTap: () {},
-                                  ),
-                                  // _SettingsRowData(
-                                  //   icon: Icons.description_outlined,
-                                  //   title: 'Terms & Conditions',
-                                  //   onTap: () {},
-                                  // ),
-                                  // _SettingsRowData(
-                                  //   icon: Icons.help_outline_rounded,
-                                  //   title: 'Help & Support',
-                                  //   onTap: () {},
-                                  // ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: 28.h),
-
-                            // ── Logout / Delete account ─────────────────────
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 24.w),
-                              child: Column(
-                                children: [
-                                  _LogoutButton(),
-                                  SizedBox(height: 12.h),
-                                  _DeleteAccountButton(),
-                                  SizedBox(height: 12.h),
-                                  Center(
-                                    child: Text(
-                                      'Scanrix v1.0.0',
-                                      style: TextStyle(
-                                        color: AppColors.secondaryText
-                                            .withValues(alpha: 0.5),
-                                        fontSize: 11.sp,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // ── Bottom nav ─────────────────────────────────────
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: SafeArea(
-                      top: false,
-                      child: BottomNavBar(
-                        currentIndex: 4,
-                        onTap: (index) =>
-                            handleBottomNavTap(context, index, currentIndex: 4),
-                        onScanPressed: () => handleScanPressed(context),
-                      ),
-                    ),
-                  ),
-                ],
+  void _showAccountSheet(BuildContext context, UserEntity? user) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        padding: EdgeInsets.fromLTRB(24.w, 18.h, 24.w, 32.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0C1D14),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
+          border: Border.all(
+            color: AppColors.neonEmerald.withValues(alpha: 0.18),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
               ),
             ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ─── Top bar ─────────────────────────────────────────────────────────────────
-
-class _TopBar extends StatelessWidget {
-  final VoidCallback onEditTap;
-  const _TopBar({required this.onEditTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Icon(Icons.eco_rounded, color: AppColors.neonEmerald, size: 22.r),
-            SizedBox(width: 8.w),
+            SizedBox(height: 20.h),
             Text(
-              'Scanrix',
+              'Account Details',
               style: TextStyle(
-                color: AppColors.white,
+                color: Colors.white,
                 fontSize: 18.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const Spacer(),
-            InkWell(
-              onTap: onEditTap,
-              borderRadius: BorderRadius.circular(18.r),
-              child: Container(
-                width: 34.r,
-                height: 34.r,
+            SizedBox(height: 16.h),
+            if (user?.email != null) ...[
+              Text(
+                'Email',
+                style: TextStyle(
+                  color: AppColors.secondaryText,
+                  fontSize: 12.sp,
+                ),
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                user!.email,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 16.h),
+            ],
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: EdgeInsets.all(8.r),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.glassFill.withValues(alpha: 0.5),
-                  border: Border.all(
-                    color: AppColors.neonEmerald.withValues(alpha: 0.2),
-                  ),
+                  color: AppColors.neonEmerald.withValues(alpha: 0.12),
                 ),
                 child: Icon(
                   Icons.edit_outlined,
                   color: AppColors.neonEmerald,
-                  size: 16.r,
+                  size: 18.r,
                 ),
               ),
-            ),
-          ],
-        ),
-        SizedBox(height: 14.h),
-        Text(
-          'My Profile',
-          style: TextStyle(
-            color: AppColors.white,
-            fontSize: 17.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Centered avatar/name hero ────────────────────────────────────────────────
-
-class _ProfileHero extends StatelessWidget {
-  final UserEntity? user;
-  final bool isLoading;
-  final VoidCallback onEditTap;
-
-  const _ProfileHero({
-    required this.user,
-    required this.isLoading,
-    required this.onEditTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final name = user?.name ?? (isLoading ? 'Loading…' : 'Scanrix User');
-    final email = user?.email;
-
-    return Column(
-      children: [
-        _Avatar(photoUrl: user?.photoUrl, onEditTap: onEditTap),
-        SizedBox(height: 14.h),
-        Text(
-          name,
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: AppColors.white,
-            fontSize: 19.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        if (email != null) ...[
-          SizedBox(height: 4.h),
-          Text(
-            email,
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: AppColors.secondaryText, fontSize: 13.sp),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  final String? photoUrl;
-  final VoidCallback onEditTap;
-
-  const _Avatar({required this.photoUrl, required this.onEditTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final size = 92.r;
-    return GestureDetector(
-      onTap: onEditTap,
-      child: SizedBox(
-        width: size + 10.r,
-        height: size + 10.r,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.neonEmerald.withValues(alpha: 0.35),
-                    AppColors.forestGreen.withValues(alpha: 0.45),
-                  ],
+              title: Text(
+                'Edit Profile',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
                 ),
-                border: Border.all(
-                  color: AppColors.neonEmerald.withValues(alpha: 0.5),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.neonEmerald.withValues(alpha: 0.22),
-                    blurRadius: 18,
-                  ),
-                ],
               ),
-              clipBehavior: Clip.antiAlias,
-              child: photoUrl != null
-                  ? Image.network(
-                      photoUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholderIcon(),
-                    )
-                  : _placeholderIcon(),
+              trailing: Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.secondaryText,
+                size: 20.r,
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _openEditProfile(user);
+              },
             ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                width: 30.r,
-                height: 30.r,
+            Divider(
+              color: Colors.white.withValues(alpha: 0.08),
+              height: 20.h,
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: EdgeInsets.all(8.r),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.neonEmerald,
-                  border: Border.all(color: AppColors.background, width: 2),
+                  color: const Color(0xFFFF4444).withValues(alpha: 0.12),
                 ),
                 child: Icon(
-                  Icons.edit_rounded,
-                  size: 14.r,
-                  color: AppColors.background,
+                  Icons.delete_outline_rounded,
+                  color: const Color(0xFFFF4444),
+                  size: 18.r,
                 ),
               ),
+              title: Text(
+                'Delete Account',
+                style: TextStyle(
+                  color: const Color(0xFFFF4444),
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              trailing: Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.secondaryText,
+                size: 20.r,
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _confirmDelete(context);
+              },
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _placeholderIcon() {
-    return Icon(Icons.person_rounded, color: AppColors.white, size: 38.r);
-  }
-}
-
-// ─── Settings sheet (single continuous list) ──────────────────────────────────
-
-class _SettingsRowData {
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
-
-  const _SettingsRowData({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
-}
-
-class _SettingsSheet extends StatelessWidget {
-  final List<_SettingsRowData> rows;
-  const _SettingsSheet({required this.rows});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.r),
-            color: AppColors.glassFill.withValues(alpha: 0.45),
-            border: Border.all(
-              color: AppColors.neonEmerald.withValues(alpha: 0.14),
-            ),
-          ),
-          child: Column(
-            children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                _SettingsRow(data: rows[i]),
-                if (i != rows.length - 1)
-                  Divider(
-                    height: 1,
-                    indent: 64.w,
-                    color: AppColors.neonEmerald.withValues(alpha: 0.1),
-                  ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsRow extends StatelessWidget {
-  final _SettingsRowData data;
-  const _SettingsRow({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: data.onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-        child: Row(
-          children: [
-            Container(
-              width: 34.r,
-              height: 34.r,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.neonEmerald.withValues(alpha: 0.12),
-              ),
-              child: Icon(data.icon, color: AppColors.neonEmerald, size: 17.r),
-            ),
-            SizedBox(width: 14.w),
-            Text(
-              data.title,
-              style: TextStyle(
-                color: AppColors.white,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Spacer(),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.secondaryText,
-              size: 18.r,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Logout button ────────────────────────────────────────────────────────────
-
-class _LogoutButton extends StatelessWidget {
-  const _LogoutButton();
 
   void _confirmLogout(BuildContext context) {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.glassFill,
+        backgroundColor: const Color(0xFF0C1D14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.r),
           side: BorderSide(color: AppColors.neonEmerald.withValues(alpha: 0.2)),
@@ -529,63 +226,12 @@ class _LogoutButton extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: InkWell(
-        onTap: () => _confirmLogout(context),
-        borderRadius: BorderRadius.circular(16.r),
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 16.h),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16.r),
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFFFF6B6B).withValues(alpha: 0.15),
-                const Color(0xFFFF4444).withValues(alpha: 0.10),
-              ],
-            ),
-            border: Border.all(
-              color: const Color(0xFFFF6B6B).withValues(alpha: 0.35),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.logout_rounded,
-                color: const Color(0xFFFF6B6B),
-                size: 20.r,
-              ),
-              SizedBox(width: 10.w),
-              Text(
-                'Sign Out',
-                style: TextStyle(
-                  color: const Color(0xFFFF6B6B),
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Delete account button ─────────────────────────────────────────────────
-
-class _DeleteAccountButton extends StatelessWidget {
-  const _DeleteAccountButton();
-
   void _confirmDelete(BuildContext context) {
     final authBloc = context.read<AuthBloc>();
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.glassFill,
+        backgroundColor: const Color(0xFF0C1D14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.r),
           side: BorderSide(
@@ -638,38 +284,591 @@ class _DeleteAccountButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: InkWell(
-        onTap: () => _confirmDelete(context),
-        borderRadius: BorderRadius.circular(16.r),
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 16.h),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16.r),
-            color: const Color(0xFFFF4444).withValues(alpha: 0.12),
-            border: Border.all(
-              color: const Color(0xFFFF4444).withValues(alpha: 0.4),
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthUnauthenticated) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginPage()),
+            (_) => false,
+          );
+        } else if (state is AuthFailure) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
+        }
+      },
+      builder: (context, state) {
+        final user = state is AuthCurrentUserLoaded
+            ? state.user
+            : (state is AuthProfileCompleteSuccess ? state.user : null);
+        final isLoadingUser = user == null && state is AuthLoading;
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: AuroraBackground(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.only(bottom: 120.h),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Top Curved Header ───────────────────────
+                          _TopCurvedHeader(
+                            user: user,
+                            isLoading: isLoadingUser,
+                            onEditTap: () => _openEditProfile(user),
+                          ),
+
+                          // ── Overview Section ────────────────────────
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(20.w, 24.h, 20.w, 0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Overview',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                                SizedBox(height: 14.h),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _OverviewCard(
+                                        count: '0',
+                                        label: 'scans',
+                                        iconWidget: _ScanIconWidget(),
+                                        onTap: () => Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => const HistoryPage(),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 14.w),
+                                    Expanded(
+                                      child: _OverviewCard(
+                                        count: '0',
+                                        label: 'Favorites',
+                                        iconWidget: Icon(
+                                          Icons.favorite_border_rounded,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.75,
+                                          ),
+                                          size: 20.r,
+                                        ),
+                                        onTap: () {},
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 18.h),
+
+                                // ── Settings Card ───────────────────────
+                                _SettingsContainer(
+                                  children: [
+                                    _SettingsTile(
+                                      icon: Icons.nightlight_round,
+                                      title: 'Dark mode',
+                                      trailing: _CustomSwitch(
+                                        value: _darkMode,
+                                        onChanged: (val) {
+                                          setState(() => _darkMode = val);
+                                        },
+                                      ),
+                                    ),
+                                    _SettingsDivider(),
+                                    _SettingsTile(
+                                      icon: Icons.alarm_rounded,
+                                      title: 'Reminders',
+                                      trailing: _CustomSwitch(
+                                        value: _reminders,
+                                        onChanged: (val) {
+                                          setState(() => _reminders = val);
+                                        },
+                                      ),
+                                    ),
+                                    _SettingsDivider(),
+                                    _SettingsTile(
+                                      icon: Icons.tune_rounded,
+                                      title: 'Preference',
+                                      trailing: Icon(
+                                        Icons.chevron_right_rounded,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                        size: 22.r,
+                                      ),
+                                      onTap: () {},
+                                    ),
+                                    _SettingsDivider(),
+                                    _SettingsTile(
+                                      icon: Icons.badge_outlined,
+                                      title: 'Account',
+                                      trailing: Icon(
+                                        Icons.chevron_right_rounded,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                        size: 22.r,
+                                      ),
+                                      onTap: () =>
+                                          _showAccountSheet(context, user),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 24.h),
+
+                                // ── Log out Button ──────────────────────
+                                _LogOutPillButton(
+                                  onTap: () => _confirmLogout(context),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // ── Bottom nav ──────────────────────────────────────
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: SafeArea(
+                      top: false,
+                      child: BottomNavBar(
+                        currentIndex: 4,
+                        onTap: (index) =>
+                            handleBottomNavTap(context, index, currentIndex: 4),
+                        onScanPressed: () => handleScanPressed(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.delete_outline_rounded,
-                color: const Color(0xFFFF4444),
-                size: 20.r,
+        );
+      },
+    );
+  }
+}
+
+// ─── Top Curved Header ────────────────────────────────────────────────────────
+
+class _TopCurvedHeader extends StatelessWidget {
+  final UserEntity? user;
+  final bool isLoading;
+  final VoidCallback onEditTap;
+
+  const _TopCurvedHeader({
+    required this.user,
+    required this.isLoading,
+    required this.onEditTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final displayName = (user != null && user!.name.isNotEmpty)
+        ? user!.name
+        : (isLoading ? 'Loading…' : 'Jasam');
+
+    return ClipRRect(
+      borderRadius: BorderRadius.vertical(bottom: Radius.circular(38.r)),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFF10281C),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(38.r)),
+          border: Border(
+            bottom: BorderSide(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 1,
+            ),
+          ),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Background wave painter image
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/painter.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
               ),
-              SizedBox(width: 10.w),
-              Text(
-                'Delete Account',
-                style: TextStyle(
-                  color: const Color(0xFFFF4444),
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w600,
+            ),
+            // Header content
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 24.h),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Top row with Edit button
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: InkWell(
+                        onTap: onEditTap,
+                        borderRadius: BorderRadius.circular(20.r),
+                        child: Container(
+                          width: 36.r,
+                          height: 36.r,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withValues(alpha: 0.35),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.edit_outlined,
+                            color: Colors.white,
+                            size: 17.r,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+
+                    // Central glowing avatar
+                    _AvatarWithGlowRing(
+                      photoUrl: user?.photoUrl,
+                      onTap: onEditTap,
+                    ),
+                    SizedBox(height: 14.h),
+
+                    // User name
+                    Text(
+                      displayName,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 19.sp,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Central Avatar with Glassy Halo ──────────────────────────────────────────
+
+class _AvatarWithGlowRing extends StatelessWidget {
+  final String? photoUrl;
+  final VoidCallback onTap;
+
+  const _AvatarWithGlowRing({required this.photoUrl, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final outerSize = 104.r;
+    final innerSize = 72.r;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: outerSize,
+        height: outerSize,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.06),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.22),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.neonEmerald.withValues(alpha: 0.12),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Container(
+          width: innerSize,
+          height: innerSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF5A665F).withValues(alpha: 0.65),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: (photoUrl != null && photoUrl!.isNotEmpty)
+              ? Image.network(
+                  photoUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _silhouetteIcon(innerSize),
+                )
+              : _silhouetteIcon(innerSize),
+        ),
+      ),
+    );
+  }
+
+  Widget _silhouetteIcon(double size) {
+    return Icon(
+      Icons.person_rounded,
+      color: Colors.white.withValues(alpha: 0.45),
+      size: size * 0.62,
+    );
+  }
+}
+
+// ─── Overview Metric Card ─────────────────────────────────────────────────────
+
+class _OverviewCard extends StatelessWidget {
+  final String count;
+  final String label;
+  final Widget iconWidget;
+  final VoidCallback onTap;
+
+  const _OverviewCard({
+    required this.count,
+    required this.label,
+    required this.iconWidget,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 16.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E3A2B).withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(22.r),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              count,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 30.sp,
+                fontWeight: FontWeight.bold,
+                height: 1.1,
+              ),
+            ),
+            SizedBox(height: 12.h),
+            Row(
+              children: [
+                iconWidget,
+                SizedBox(width: 8.w),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Custom Scan Bracket Barcode Icon ─────────────────────────────────────────
+
+class _ScanIconWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      Icons.document_scanner_outlined,
+      color: Colors.white.withValues(alpha: 0.75),
+      size: 20.r,
+    );
+  }
+}
+
+// ─── Settings Container & Tiles ──────────────────────────────────────────────
+
+class _SettingsContainer extends StatelessWidget {
+  final List<Widget> children;
+
+  const _SettingsContainer({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F261B).withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(24.r),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: children,
+      ),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Widget trailing;
+  final VoidCallback? onTap;
+
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    required this.trailing,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24.r),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 14.h),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: Colors.white.withValues(alpha: 0.7),
+              size: 22.r,
+            ),
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            trailing,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      color: Colors.white.withValues(alpha: 0.07),
+    );
+  }
+}
+
+// ─── Custom Toggle Switch ────────────────────────────────────────────────────
+
+class _CustomSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _CustomSwitch({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 44.w,
+        height: 25.h,
+        padding: EdgeInsets.symmetric(horizontal: 3.w),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(13.r),
+          color: value ? const Color(0xFF38463D) : const Color(0xFF132319),
+          border: Border.all(
+            color: value
+                ? Colors.white.withValues(alpha: 0.2)
+                : Colors.white.withValues(alpha: 0.12),
+            width: 1.2,
+          ),
+        ),
+        alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          width: 18.r,
+          height: 18.r,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: value ? const Color(0xFF86978C) : const Color(0xFF38473D),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Log Out Pill Button ─────────────────────────────────────────────────────
+
+class _LogOutPillButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _LogOutPillButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 46.h,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFFE53935),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24.r),
+          ),
+          padding: EdgeInsets.zero,
+        ),
+        child: Text(
+          'Log out',
+          style: TextStyle(
+            color: const Color(0xFFE53935),
+            fontSize: 15.sp,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
