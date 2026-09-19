@@ -45,6 +45,7 @@ class HomePage extends StatelessWidget {
                                     icon: Icons.assignment_outlined,
                                     title: 'My Routine',
                                     subtitle: 'Daily products',
+                                    imageAsset: 'assets/images/routine.png',
                                   ),
                                 ),
                                 SizedBox(width: 14.w),

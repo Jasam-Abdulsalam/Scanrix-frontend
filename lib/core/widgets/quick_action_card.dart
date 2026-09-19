@@ -6,53 +6,125 @@ class QuickActionCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final String? imageAsset;
+  final VoidCallback? onTap;
 
   const QuickActionCard({
     super.key,
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.imageAsset,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18.r),
         color: AppColors.glassFill.withValues(alpha: 0.5),
         border: Border.all(color: AppColors.neonEmerald.withValues(alpha: 0.22)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36.r,
-                height: 36.r,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.neonEmerald.withValues(alpha: 0.14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.neonEmerald.withValues(alpha: 0.25),
-                      blurRadius: 10,
+      clipBehavior: Clip.antiAlias,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            if (imageAsset != null) ...[
+              // Soft ambient emerald glow behind the asset
+              Positioned(
+                right: -10.w,
+                bottom: -10.h,
+                width: 100.w,
+                height: 100.h,
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.neonEmerald.withValues(alpha: 0.25),
+                          Colors.transparent,
+                        ],
+                      ),
                     ),
-                  ],
+                  ),
                 ),
-                child: Icon(icon, color: AppColors.neonEmerald, size: 18.r),
               ),
-              const Spacer(),
-              Icon(Icons.chevron_right_rounded, color: AppColors.secondaryText, size: 18.r),
+              // Right-side 3D illustration asset
+              Positioned(
+                right: -4.w,
+                bottom: -8.h,
+                width: 100.w,
+                height: 100.h,
+                child: IgnorePointer(
+                  child: Image.asset(
+                    imageAsset!,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.bottomRight,
+                  ),
+                ),
+              ),
             ],
-          ),
-          SizedBox(height: 12.h),
-          Text(title,
-              style: TextStyle(color: AppColors.white, fontSize: 14.sp, fontWeight: FontWeight.bold)),
-          SizedBox(height: 2.h),
-          Text(subtitle, style: TextStyle(color: AppColors.secondaryText, fontSize: 12.sp)),
-        ],
+            Padding(
+              padding: EdgeInsets.all(16.r),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 36.r,
+                        height: 36.r,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.neonEmerald.withValues(alpha: 0.14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.neonEmerald.withValues(alpha: 0.25),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: Icon(icon, color: AppColors.neonEmerald, size: 18.r),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.secondaryText,
+                        size: 18.r,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.secondaryText,
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
