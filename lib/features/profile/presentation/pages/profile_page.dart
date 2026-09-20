@@ -128,9 +128,10 @@ class _ProfilePageState extends State<ProfilePage> {
         MaterialPageRoute(builder: (_) => const LoginPage()),
         (_) => false,
       );
-    } else if (state is AuthFailure) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
     }
+    //   } else if (state is AuthFailure) {
+    //     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+    //   }
   }
 
   Widget _sectionTitle(String text) {
