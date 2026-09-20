@@ -500,12 +500,15 @@ class _TopCurvedHeader extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Background wave painter image
+            // Background wave painter: full header cover, low opacity
             Positioned.fill(
-              child: Image.asset(
-                'assets/images/painter.png',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              child: Opacity(
+                opacity: 0.15,
+                child: Image.asset(
+                  'assets/images/painter.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
               ),
             ),
             // Header content
@@ -592,10 +595,10 @@ class _AvatarWithGlowRing extends StatelessWidget {
         height: outerSize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.06),
+          color: const Color(0xFF132F21),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.22),
-            width: 1.2,
+            color: Colors.white.withValues(alpha: 0.30),
+            width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
@@ -611,14 +614,14 @@ class _AvatarWithGlowRing extends StatelessWidget {
           height: innerSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xFF5A665F).withValues(alpha: 0.65),
+            color: const Color(0xFF3A4D43),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.15),
+              color: Colors.white.withValues(alpha: 0.18),
               width: 1,
             ),
           ),
           clipBehavior: Clip.antiAlias,
-          child: (photoUrl != null && photoUrl!.isNotEmpty)
+          child: photoUrl != null && photoUrl!.isNotEmpty
               ? Image.network(
                   photoUrl!,
                   fit: BoxFit.cover,
