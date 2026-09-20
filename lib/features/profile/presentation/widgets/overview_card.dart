@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../../core/theme/app_theme_colors.dart';
+
 class ProfileOverviewCard extends StatelessWidget {
   final String count;
   final String title;
@@ -19,18 +21,19 @@ class ProfileOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16.r),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
         decoration: BoxDecoration(
-          color: const Color(0xFF06130C),
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(color: const Color(0xFF133825), width: 1.0),
+          border: Border.all(color: colors.cardBorder, width: 1.0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
+              color: Colors.black.withValues(alpha: 0.25),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -41,9 +44,13 @@ class ProfileOverviewCard extends StatelessWidget {
             Container(
               width: 44.r,
               height: 44.r,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0xFF0C2417),
+                color: colors.iconContainerBg,
+                border: Border.all(
+                  color: colors.neonEmerald.withValues(alpha: 0.18),
+                  width: 1.0,
+                ),
               ),
               alignment: Alignment.center,
               child: iconWidget,
@@ -76,7 +83,7 @@ class ProfileOverviewCard extends StatelessWidget {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: const Color(0xFF6B8074),
+                      color: colors.secondaryText,
                       fontSize: 11.sp,
                       fontWeight: FontWeight.normal,
                     ),

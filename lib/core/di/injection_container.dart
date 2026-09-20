@@ -20,6 +20,7 @@ import '../constants/google_auth_config.dart';
 import '../network/api_client.dart';
 import '../network/dio_client.dart';
 import '../storage/token_storage.dart';
+import '../theme/theme_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -31,6 +32,7 @@ final sl = GetIt.instance;
 /// `ApiClient`, not `DioClient` directly (only `GoogleLoginUseCase` does
 /// this so far — see CLAUDE.md "Google Sign-In").
 Future<void> init() async {
+  sl.registerLazySingleton(() => ThemeCubit());
   sl.registerLazySingleton(() => TokenStorage());
   sl.registerLazySingleton(() => DioClient(tokenStorage: sl()));
   sl.registerLazySingleton(() => ApiClient(dioClient: sl()));

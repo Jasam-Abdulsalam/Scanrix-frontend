@@ -10,6 +10,8 @@ import 'package:scanrix_frontend/features/profile/presentation/widgets/settings.
 
 import '../../../../core/navigation/bottom_nav_navigation.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/widgets/aurora_background.dart';
 import '../../../../core/widgets/bottom_nav_bar.dart';
 import '../../../auth/domain/entities/user_entity.dart';
@@ -151,7 +153,7 @@ class _ProfilePageState extends State<ProfilePage> {
             count: '0',
             title: 'Scans',
             subtitle: 'Products analyzed',
-            iconWidget: Icon(Icons.crop_free_rounded, color: AppColors.neonEmerald, size: 20.r),
+            iconWidget: Icon(Icons.crop_free_rounded, color: context.colors.neonEmerald, size: 20.r),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const HistoryPage()),
             ),
@@ -163,7 +165,7 @@ class _ProfilePageState extends State<ProfilePage> {
             count: '0',
             title: 'Favorites',
             subtitle: 'Saved products',
-            iconWidget: Icon(Icons.favorite_border_rounded, color: AppColors.neonEmerald, size: 18.r),
+            iconWidget: Icon(Icons.favorite_border_rounded, color: context.colors.neonEmerald, size: 18.r),
             onTap: () {},
           ),
         ),
@@ -174,14 +176,21 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildSettingsSection(UserEntity? user) {
     return SettingsContainer(
       children: [
-        SettingsTile(
-          icon: Icons.nightlight_round,
-          title: 'Dark mode',
-          subtitle: 'Reduce eye strain',
-          trailing: SettingsSwitch(
-            value: _darkMode,
-            onChanged: (val) => setState(() => _darkMode = val),
-          ),
+        BlocBuilder<ThemeCubit, ThemeMode>(
+          builder: (context, themeMode) {
+            final isDark = themeMode == ThemeMode.dark;
+            return SettingsTile(
+              icon: Icons.nightlight_round,
+              title: 'Dark mode',
+              subtitle: isDark
+                  ? 'Dark Green with emerald green'
+                  : 'Blackish with emerald green (Reference)',
+              trailing: SettingsSwitch(
+                value: isDark,
+                onChanged: (val) => context.read<ThemeCubit>().setTheme(val),
+              ),
+            );
+          },
         ),
         const SettingsDivider(),
         SettingsTile(

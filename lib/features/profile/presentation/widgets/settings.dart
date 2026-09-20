@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_theme_colors.dart';
 
 class SettingsContainer extends StatelessWidget {
   final List<Widget> children;
@@ -10,16 +10,17 @@ class SettingsContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF06130C),
+        color: colors.surface,
         borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: const Color(0xFF133825), width: 1.0),
+        border: Border.all(color: colors.cardBorder, width: 1.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
+            color: Colors.black.withValues(alpha: 0.28),
             blurRadius: 14,
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -46,6 +47,7 @@ class SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18.r),
@@ -56,12 +58,16 @@ class SettingsTile extends StatelessWidget {
             Container(
               width: 40.r,
               height: 40.r,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0xFF0C2417),
+                color: colors.iconContainerBg,
+                border: Border.all(
+                  color: colors.neonEmerald.withValues(alpha: 0.18),
+                  width: 1.0,
+                ),
               ),
               alignment: Alignment.center,
-              child: Icon(icon, color: AppColors.neonEmerald, size: 20.r),
+              child: Icon(icon, color: colors.neonEmerald, size: 20.r),
             ),
             SizedBox(width: 14.w),
             Expanded(
@@ -81,7 +87,7 @@ class SettingsTile extends StatelessWidget {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: const Color(0xFF6B8074),
+                      color: colors.secondaryText,
                       fontSize: 12.sp,
                       fontWeight: FontWeight.normal,
                     ),
@@ -102,7 +108,7 @@ class SettingsDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(height: 1, thickness: 1, color: Color(0xFF0F261B));
+    return Divider(height: 1, thickness: 1, color: context.colors.divider);
   }
 }
 
@@ -114,6 +120,7 @@ class SettingsSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: () => onChanged(!value),
       child: AnimatedContainer(
@@ -123,10 +130,18 @@ class SettingsSwitch extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 3.w),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14.r),
-          color: value ? const Color(0xFF20E584) : const Color(0xFF213127),
+          color: value ? colors.neonEmerald : colors.switchInactiveTrack,
           border: value
               ? null
-              : Border.all(color: const Color(0xFF324639), width: 1.0),
+              : Border.all(color: colors.cardBorder, width: 1.0),
+          boxShadow: value
+              ? [
+                  BoxShadow(
+                    color: colors.neonEmerald.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                  ),
+                ]
+              : null,
         ),
         alignment: value ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
@@ -134,7 +149,7 @@ class SettingsSwitch extends StatelessWidget {
           height: 20.r,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: value ? Colors.white : const Color(0xFF75887C),
+            color: value ? Colors.white : const Color(0xFF6B7E74),
           ),
         ),
       ),

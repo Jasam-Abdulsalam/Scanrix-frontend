@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../../core/navigation/bottom_nav_navigation.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
 import '../../../../core/widgets/bottom_nav_bar.dart';
 import '../../../../core/widgets/quick_action_card.dart';
@@ -97,7 +98,7 @@ class _Header extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(24.w, 12.h, 24.w, 4.h),
       child: Row(
         children: [
-          Icon(Icons.eco_rounded, color: AppColors.neonEmerald, size: 22.r),
+          Icon(Icons.eco_rounded, color: context.colors.neonEmerald, size: 22.r),
           SizedBox(width: 8.w),
           Text(
             'Scanrix',
@@ -130,6 +131,7 @@ class _CircleIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -138,9 +140,9 @@ class _CircleIconButton extends StatelessWidget {
           height: 38.r,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppColors.glassFill.withValues(alpha: 0.6),
+            color: colors.surface,
             border: Border.all(
-              color: AppColors.neonEmerald.withValues(alpha: 0.18),
+              color: colors.cardBorder,
             ),
           ),
           child: Icon(icon, color: AppColors.white, size: 18.r),
@@ -154,8 +156,8 @@ class _CircleIconButton extends StatelessWidget {
               height: 9.r,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.neonEmerald,
-                border: Border.all(color: AppColors.background, width: 1.5),
+                color: colors.neonEmerald,
+                border: Border.all(color: colors.background, width: 1.5),
               ),
             ),
           ),
@@ -169,6 +171,7 @@ class _WelcomeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -183,7 +186,7 @@ class _WelcomeSection extends StatelessWidget {
               const TextSpan(text: 'Welcome to '),
               TextSpan(
                 text: 'Scanrix!',
-                style: TextStyle(color: AppColors.neonEmerald),
+                style: TextStyle(color: colors.neonEmerald),
               ),
             ],
           ),
@@ -191,7 +194,7 @@ class _WelcomeSection extends StatelessWidget {
         SizedBox(height: 4.h),
         Text(
           'Ready to scan your first product?',
-          style: TextStyle(color: AppColors.secondaryText, fontSize: 13.sp),
+          style: TextStyle(color: colors.secondaryText, fontSize: 13.sp),
         ),
       ],
     );
@@ -205,6 +208,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Row(
       children: [
         Text(
@@ -218,7 +222,7 @@ class _SectionHeader extends StatelessWidget {
         const Spacer(),
         Icon(
           Icons.chevron_right_rounded,
-          color: AppColors.secondaryText,
+          color: colors.secondaryText,
           size: 20.r,
         ),
       ],
@@ -305,6 +309,7 @@ class _ScanHealthProductCardState extends State<_ScanHealthProductCard>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final radius = 24.r;
 
     return Container(
@@ -313,7 +318,7 @@ class _ScanHealthProductCardState extends State<_ScanHealthProductCard>
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF25E28B).withValues(alpha: 0.12),
+            color: colors.neonEmerald.withValues(alpha: 0.12),
             blurRadius: 36,
             spreadRadius: 1,
           ),
@@ -325,18 +330,14 @@ class _ScanHealthProductCardState extends State<_ScanHealthProductCard>
           width: double.infinity,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(radius),
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0D281C),
-                Color(0xFF081C13),
-                Color(0xFF040E0A),
-              ],
-              stops: [0.0, 0.52, 1.0],
+              colors: colors.cardGradient,
+              stops: const [0.0, 0.52, 1.0],
             ),
             border: Border.all(
-              color: const Color(0xFF2B634A).withValues(alpha: 0.85),
+              color: colors.cardBorder,
               width: 1.2,
             ),
           ),
@@ -357,11 +358,7 @@ class _ScanHealthProductCardState extends State<_ScanHealthProductCard>
                       gradient: RadialGradient(
                         center: const Alignment(0.2, -0.2),
                         radius: 0.85,
-                        colors: [
-                          const Color(0xFF1F5C3E).withValues(alpha: 0.65),
-                          const Color(0xFF103623).withValues(alpha: 0.30),
-                          Colors.transparent,
-                        ],
+                        colors: colors.studioLightGlow,
                       ),
                     ),
                   ),

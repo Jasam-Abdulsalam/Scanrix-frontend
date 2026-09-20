@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_theme_colors.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 
 /// Top curved header showing the ambient glow, user avatar, and name.
@@ -19,6 +19,7 @@ class ProfileTopHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final displayName = (user != null && user!.name.isNotEmpty)
         ? user!.name
         : (isLoading ? 'Loading…' : 'Jasam');
@@ -28,19 +29,15 @@ class ProfileTopHeader extends StatelessWidget {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0C2417),
-              Color(0xFF071810),
-              Color(0xFF040E0A),
-            ],
-            stops: [0.0, 0.50, 1.0],
+            colors: colors.headerGradient,
+            stops: const [0.0, 0.50, 1.0],
           ),
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(30.r)),
-          border: const Border(
-            bottom: BorderSide(color: Color(0xFF133825), width: 1.0),
+          border: Border(
+            bottom: BorderSide(color: colors.cardBorder, width: 1.0),
           ),
         ),
         child: Stack(
@@ -55,11 +52,7 @@ class ProfileTopHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
-                      colors: [
-                        const Color(0xFF1F5C3E).withValues(alpha: 0.55),
-                        const Color(0xFF0F3824).withValues(alpha: 0.20),
-                        Colors.transparent,
-                      ],
+                      colors: colors.headerGlow,
                     ),
                   ),
                 ),
@@ -92,21 +85,21 @@ class ProfileTopHeader extends StatelessWidget {
                           height: 36.r,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF0A2218).withValues(alpha: 0.85),
+                            color: colors.iconContainerBg.withValues(alpha: 0.90),
                             border: Border.all(
-                              color: AppColors.neonEmerald.withValues(alpha: 0.35),
+                              color: colors.neonEmerald.withValues(alpha: 0.35),
                               width: 1.2,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.neonEmerald.withValues(alpha: 0.12),
+                                color: colors.neonEmerald.withValues(alpha: 0.15),
                                 blurRadius: 8,
                               ),
                             ],
                           ),
                           child: Icon(
                             Icons.edit_outlined,
-                            color: AppColors.neonEmerald,
+                            color: colors.neonEmerald,
                             size: 17.r,
                           ),
                         ),
@@ -144,6 +137,7 @@ class _AvatarWithGlowRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final outerSize = 98.r;
     final innerSize = 68.r;
 
@@ -154,18 +148,18 @@ class _AvatarWithGlowRing extends StatelessWidget {
         height: outerSize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF1A4530), Color(0xFF0E281C)],
+            colors: colors.avatarOuterGradient,
           ),
           border: Border.all(
-            color: AppColors.neonEmerald.withValues(alpha: 0.38),
+            color: colors.neonEmerald.withValues(alpha: 0.38),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.neonEmerald.withValues(alpha: 0.22),
+              color: colors.neonEmerald.withValues(alpha: 0.22),
               blurRadius: 18,
               spreadRadius: 1,
             ),
@@ -177,9 +171,9 @@ class _AvatarWithGlowRing extends StatelessWidget {
           height: innerSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xFF091F15),
+            color: colors.iconContainerBg,
             border: Border.all(
-              color: AppColors.neonEmerald.withValues(alpha: 0.25),
+              color: colors.neonEmerald.withValues(alpha: 0.25),
               width: 1,
             ),
           ),
@@ -188,18 +182,18 @@ class _AvatarWithGlowRing extends StatelessWidget {
               ? Image.network(
                   photoUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _silhouetteIcon(innerSize),
+                  errorBuilder: (_, __, ___) => _silhouetteIcon(colors, innerSize),
                 )
-              : _silhouetteIcon(innerSize),
+              : _silhouetteIcon(colors, innerSize),
         ),
       ),
     );
   }
 
-  Widget _silhouetteIcon(double size) {
+  Widget _silhouetteIcon(AppThemeColors colors, double size) {
     return Icon(
       Icons.person_rounded,
-      color: AppColors.neonEmerald.withValues(alpha: 0.75),
+      color: colors.neonEmerald.withValues(alpha: 0.75),
       size: size * 0.60,
     );
   }

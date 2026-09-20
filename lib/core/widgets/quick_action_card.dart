@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme_colors.dart';
 
 class QuickActionCard extends StatelessWidget {
   final IconData? icon;
@@ -20,11 +21,12 @@ class QuickActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18.r),
-        color: AppColors.glassFill.withValues(alpha: 0.5),
-        border: Border.all(color: AppColors.neonEmerald.withValues(alpha: 0.22)),
+        color: colors.surface,
+        border: Border.all(color: colors.cardBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: GestureDetector(
@@ -116,7 +118,7 @@ class QuickActionCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: AppColors.secondaryText,
+                      color: colors.secondaryText,
                       fontSize: 12.sp,
                     ),
                   ),
