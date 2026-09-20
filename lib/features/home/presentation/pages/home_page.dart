@@ -33,16 +33,16 @@ class HomePage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const _WelcomeSection(),
-                            SizedBox(height: 24.h),
+                            SizedBox(height: 44.h),
                             const _ScanHealthProductCard(),
-                            SizedBox(height: 28.h),
+                            SizedBox(height: 38.h),
                             const _SectionHeader(title: 'Quick Actions'),
                             SizedBox(height: 14.h),
                             Row(
                               children: [
                                 const Expanded(
                                   child: QuickActionCard(
-                                    icon: Icons.assignment_outlined,
+                                    
                                     title: 'My Routine',
                                     subtitle: 'Daily products',
                                     imageAsset: 'assets/images/routine.png',
@@ -54,7 +54,7 @@ class HomePage extends StatelessWidget {
                                     icon: Icons.favorite_border_rounded,
                                     title: 'Saved Products',
                                     subtitle: 'Your collection',
-                                    imageAsset: 'assets/images/favorite.png',
+                                    imageAsset: 'assets/images/product 2.png',
                                   ),
                                 ),
                               ],

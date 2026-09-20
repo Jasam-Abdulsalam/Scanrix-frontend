@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_colors.dart';
 
 class QuickActionCard extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
   final String title;
   final String subtitle;
   final String? imageAsset;
@@ -11,7 +11,7 @@ class QuickActionCard extends StatelessWidget {
 
   const QuickActionCard({
     super.key,
-    required this.icon,
+     this.icon,
     required this.title,
     required this.subtitle,
     this.imageAsset,
@@ -76,21 +76,21 @@ class QuickActionCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 36.r,
-                        height: 36.r,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.neonEmerald.withValues(alpha: 0.14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.neonEmerald.withValues(alpha: 0.25),
-                              blurRadius: 10,
-                            ),
-                          ],
-                        ),
-                        child: Icon(icon, color: AppColors.neonEmerald, size: 18.r),
-                      ),
+                      // Container(
+                      //   width: 36.r,
+                      //   height: 36.r,
+                      //   decoration: BoxDecoration(
+                      //     shape: BoxShape.circle,
+                      //     color: AppColors.neonEmerald.withValues(alpha: 0.14),
+                      //     boxShadow: [
+                      //       BoxShadow(
+                      //         color: AppColors.neonEmerald.withValues(alpha: 0.25),
+                      //         blurRadius: 10,
+                      //       ),
+                      //     ],
+                      //   ),
+                      //   child: Icon(icon, color: AppColors.neonEmerald, size: 18.r),
+                      // ),
                       const Spacer(),
                       Icon(
                         Icons.chevron_right_rounded,
