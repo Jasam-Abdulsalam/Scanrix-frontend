@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
+import 'scan_category.dart';
 
-/// Top status pill shown above the viewfinder.
-/// Shows back button, animated "Scanning…XX%" label, and flash toggle.
 class ScanStatusBar extends StatefulWidget {
   final bool isScanning;
   final bool flashOn;
+  final ScanCategory? category; // NEW
   final VoidCallback onBack;
   final VoidCallback onFlashToggle;
 
@@ -17,6 +17,7 @@ class ScanStatusBar extends StatefulWidget {
     super.key,
     required this.isScanning,
     required this.flashOn,
+    this.category, // NEW
     required this.onBack,
     required this.onFlashToggle,
   });
@@ -69,10 +70,28 @@ class _ScanStatusBarState extends State<ScanStatusBar>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Back button
-            _CircleIconBtn(
-              icon: Icons.chevron_left_rounded,
-              onTap: widget.onBack,
+            // Back button + category badge
+            Row(
+              children: [
+                _CircleIconBtn(
+                  icon: Icons.chevron_left_rounded,
+                  onTap: widget.onBack,
+                ),
+                SizedBox(width: 8.w),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: anim,
+                    child: FadeTransition(opacity: anim, child: child),
+                  ),
+                  child: widget.category != null
+                      ? _CategoryBadge(
+                          key: ValueKey(widget.category),
+                          category: widget.category!,
+                        )
+                      : const SizedBox.shrink(key: ValueKey('none')),
+                ),
+              ],
             ),
 
             // Status pill
@@ -149,6 +168,43 @@ class _ScanStatusBarState extends State<ScanStatusBar>
               highlight: widget.flashOn,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryBadge extends StatelessWidget {
+  final ScanCategory category;
+  const _CategoryBadge({super.key, required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(30.r),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30.r),
+            gradient: LinearGradient(colors: category.gradient),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(category.emoji, style: TextStyle(fontSize: 12.sp)),
+              SizedBox(width: 4.w),
+              Text(
+                category.label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10.5.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

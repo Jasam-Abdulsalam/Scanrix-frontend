@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:scanrix_frontend/features/scan/presentation/widgets/category_mismatch.dart';
+import 'package:scanrix_frontend/features/scan/presentation/widgets/scan_category_selection_overlay.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
 import '../bloc/scan_bloc.dart';
 import '../bloc/scan_event.dart';
 import '../bloc/scan_state.dart';
 import '../widgets/barcode_popup_card.dart';
+
 import '../widgets/scan_bottom_bar.dart';
+import '../widgets/scan_category.dart';
 import '../widgets/scan_status_bar.dart';
 import '../widgets/scan_viewfinder_overlay.dart';
 
@@ -16,6 +20,9 @@ import '../widgets/scan_viewfinder_overlay.dart';
 // Scanner phase state machine
 // ─────────────────────────────────────────────────────────────────────────────
 enum _ScannerPhase {
+  /// Blur overlay shown, waiting for the user to pick a category.
+  categorySelection,
+
   /// Live camera is running, scan line animating in viewfinder.
   scanning,
 
@@ -36,10 +43,13 @@ class ScanPage extends StatefulWidget {
   State<ScanPage> createState() => _ScanPageState();
 }
 
-class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
+class _ScanPageState extends State<ScanPage>
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   late final MobileScannerController _cameraCtrl;
+  late final AnimationController _shakeCtrl;
 
-  _ScannerPhase _phase = _ScannerPhase.scanning;
+  _ScannerPhase _phase = _ScannerPhase.categorySelection;
+  ScanCategory? _selectedCategory;
   String? _detectedBarcode;
   String? _detectedFormat;
   bool _flashOn = false;
@@ -55,6 +65,13 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       facing: CameraFacing.back,
       torchEnabled: false,
       detectionSpeed: DetectionSpeed.noDuplicates,
+      // Scanner logic stays frozen until a category is picked —
+      // don't autoStart; we start it manually in _onCategorySelected.
+      autoStart: false,
+    );
+    _shakeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
     );
     _setFullScreenOverlay();
   }
@@ -74,6 +91,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cameraCtrl.dispose();
+    _shakeCtrl.dispose();
     _restoreOverlay();
     super.dispose();
   }
@@ -90,6 +108,25 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
 
   void _restoreOverlay() {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Category selection → transition into scanning
+  // ─────────────────────────────────────────────────────────────────────────
+  Future<void> _onCategorySelected(ScanCategory category) async {
+    setState(() => _selectedCategory = category);
+
+    // Let the card's own press/glow animation play briefly before the
+    // overlay fades and the camera starts (per the spec's transition motion).
+    await Future.delayed(const Duration(milliseconds: 180));
+    if (!mounted) return;
+
+    setState(() => _phase = _ScannerPhase.scanning);
+
+    // Camera was never started (autoStart: false) — start it now so the
+    // BackdropFilter fade-out (300ms, handled by CategorySelectionOverlay's
+    // AnimatedOpacity) reveals an already-live feed rather than a black gap.
+    await _cameraCtrl.start();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -128,13 +165,10 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     setState(() => _phase = _ScannerPhase.done);
 
     // Dispatch to ScanBloc
-    context
-        .read<ScanBloc>()
-        .add(ScanBarcodeRequested(_detectedBarcode!));
+    context.read<ScanBloc>().add(ScanBarcodeRequested(_detectedBarcode!));
 
-    // Pop back — the parent page / BlocListener handles navigation
-    // after ScanBarcodeSuccess fires.
-    Navigator.of(context).pop();
+    // NOTE: navigation is deferred to _handleScanBlocState below now,
+    // so we can intercept a category mismatch before popping the page.
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -160,12 +194,29 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Category mismatch: switch and re-run without leaving the page
+  // ─────────────────────────────────────────────────────────────────────────
+  void _switchCategoryAndRetry(ScanCategory newCategory) {
+    setState(() {
+      _selectedCategory = newCategory;
+      _phase = _ScannerPhase.scanning;
+      _processingDetection = false;
+    });
+    // Re-fetch/display using the same barcode under the corrected category.
+    if (_detectedBarcode != null) {
+      context.read<ScanBloc>().add(ScanBarcodeRequested(_detectedBarcode!));
+    }
+  }
+
+  Future<void> _playShake() async {
+    await _shakeCtrl.forward(from: 0);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Build
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    // We don't need to react to ScanBloc state here (parent handles results),
-    // but wrap in BlocListener as a safety net for error toasts.
     return BlocListener<ScanBloc, ScanState>(
       listener: _handleScanBlocState,
       child: AnnotatedRegion<SystemUiOverlayStyle>(
@@ -191,6 +242,9 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
                 child: ScanStatusBar(
                   isScanning: _phase == _ScannerPhase.scanning,
                   flashOn: _flashOn,
+                  category: _phase == _ScannerPhase.categorySelection
+                      ? null
+                      : _selectedCategory,
                   onBack: () => Navigator.of(context).maybePop(),
                   onFlashToggle: _toggleFlash,
                 ),
@@ -211,12 +265,31 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
               // ── 5. Barcode pop-up card (shown when popupPlaying)
               if (_phase == _ScannerPhase.popupPlaying &&
                   _detectedBarcode != null)
-                BarcodePopupCard(
-                  barcodeValue: _detectedBarcode!,
-                  barcodeFormat: _detectedFormat,
-                  onComplete: _onPopupComplete,
-                  onDismiss: _onPopupDismissed,
+                AnimatedBuilder(
+                  animation: _shakeCtrl,
+                  builder: (context, child) {
+                    final t = _shakeCtrl.value;
+                    // Simple decaying horizontal shake.
+                    final offset =
+                        (t == 0 || t == 1) ? 0.0 : (8 * (1 - t)) * ((t * 40).round().isEven ? 1 : -1);
+                    return Transform.translate(
+                      offset: Offset(offset, 0),
+                      child: child,
+                    );
+                  },
+                  child: BarcodePopupCard(
+                    barcodeValue: _detectedBarcode!,
+                    barcodeFormat: _detectedFormat,
+                    onComplete: _onPopupComplete,
+                    onDismiss: _onPopupDismissed,
+                  ),
                 ),
+
+              // ── 6. Category selection blur overlay (topmost, initial state)
+              CategorySelectionOverlay(
+                visible: _phase == _ScannerPhase.categorySelection,
+                onCategorySelected: _onCategorySelected,
+              ),
             ],
           ),
         ),
@@ -235,6 +308,32 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   }
 
   void _handleScanBlocState(BuildContext context, ScanState state) {
+    if (state is ScanBarcodeSuccess) {
+      // ── Category mismatch check ────────────────────────────────────────
+      // TODO: confirm the actual field name on ScanResultEntity — adjust
+      // `state.result.category` below to match (e.g. result.productCategory).
+      final resultCategory =
+          ScanCategoryX.fromBackendLabel(state.result.product.category);
+
+      if (_selectedCategory != null &&
+          resultCategory != null &&
+          resultCategory != _selectedCategory) {
+        _playShake();
+        showCategoryMismatchSnackbar(
+          context,
+          detectedCategory: resultCategory,
+          onSwitch: () => _switchCategoryAndRetry(resultCategory),
+        );
+        // Stay on the popup/frozen state until the user decides; don't
+        // pop the page yet.
+        return;
+      }
+
+      // No mismatch (or category unknown) — proceed as before.
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
+
     if (state is ScanFailure) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
