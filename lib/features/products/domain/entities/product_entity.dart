@@ -14,9 +14,12 @@ class ProductEntity extends Equatable {
   final String name;
   final String brand;
   final String category;
+  final List<String> tags;
+  final String? quantity;
   final List<IngredientEntity> ingredients;
   final int? overallScore;
   final String verdict;
+  final String? summary;
   final String? imageUrl;
   final String source;
   final DateTime createdAt;
@@ -27,9 +30,12 @@ class ProductEntity extends Equatable {
     required this.name,
     required this.brand,
     required this.category,
+    this.tags = const [],
+    this.quantity,
     required this.ingredients,
     this.overallScore,
     required this.verdict,
+    this.summary,
     this.imageUrl,
     required this.source,
     required this.createdAt,
@@ -44,9 +50,12 @@ class ProductEntity extends Equatable {
         name,
         brand,
         category,
+        tags,
+        quantity,
         ingredients,
         overallScore,
         verdict,
+        summary,
         imageUrl,
         source,
         createdAt,

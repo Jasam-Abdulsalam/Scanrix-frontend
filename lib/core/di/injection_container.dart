@@ -71,14 +71,14 @@ Future<void> init() async {
   sl.registerFactory(
     () => ProductBloc(getProductUseCase: sl()),
   );
-  sl.registerLazySingleton(() => GetProductUseCase());
+  sl.registerLazySingleton(() => GetProductUseCase(apiClient: sl()));
 
   // ---------------- Scan ----------------
   sl.registerFactory(
     () => ScanBloc(scanBarcodeUseCase: sl(), analyzeTextUseCase: sl()),
   );
-  sl.registerLazySingleton(() => ScanBarcodeUseCase());
-  sl.registerLazySingleton(() => AnalyzeTextUseCase());
+  sl.registerLazySingleton(() => ScanBarcodeUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => AnalyzeTextUseCase(apiClient: sl()));
 
   // ---------------- History ----------------
   sl.registerFactory(

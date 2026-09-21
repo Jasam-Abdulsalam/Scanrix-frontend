@@ -1,18 +1,28 @@
+import 'dart:ui';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:scanrix_frontend/features/scan/presentation/widgets/category_mismatch.dart';
 import 'package:scanrix_frontend/features/scan/presentation/widgets/scan_category_selection_overlay.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/toast.dart';
+import '../../data/datasources/ocr_text_recognizer.dart';
 import '../bloc/scan_bloc.dart';
 import '../bloc/scan_event.dart';
 import '../bloc/scan_state.dart';
 import '../widgets/barcode_popup_card.dart';
 
+import 'ingredient_analysis_result_page.dart';
+import 'product_not_found_page.dart';
+import 'scan_confirmation_page.dart';
 import '../widgets/scan_bottom_bar.dart';
 import '../widgets/scan_category.dart';
+import '../widgets/scan_mode.dart';
 import '../widgets/scan_status_bar.dart';
 import '../widgets/scan_viewfinder_overlay.dart';
 
@@ -47,14 +57,18 @@ class _ScanPageState extends State<ScanPage>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   late final MobileScannerController _cameraCtrl;
   late final AnimationController _shakeCtrl;
+  late final OcrTextRecognizer _ocr;
+  CameraController? _ingredientCameraCtrl;
 
   _ScannerPhase _phase = _ScannerPhase.categorySelection;
+  ScanMode _mode = ScanMode.barcode;
   ScanCategory? _selectedCategory;
   String? _detectedBarcode;
   String? _detectedFormat;
   bool _flashOn = false;
+  bool _capturingText = false;
 
-  // Guard against double-firing onDetect
+  // Guard against double-firing onDetect / double-tapping capture
   bool _processingDetection = false;
 
   @override
@@ -73,6 +87,7 @@ class _ScanPageState extends State<ScanPage>
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
+    _ocr = OcrTextRecognizer();
     _setFullScreenOverlay();
   }
 
@@ -80,10 +95,19 @@ class _ScanPageState extends State<ScanPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed &&
         _phase == _ScannerPhase.scanning) {
-      _cameraCtrl.start();
+      if (_mode == ScanMode.barcode) {
+        _cameraCtrl.start();
+      } else {
+        _initIngredientCamera();
+      }
     } else if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
-      _cameraCtrl.stop();
+      if (_mode == ScanMode.barcode) {
+        _cameraCtrl.stop();
+      } else {
+        _ingredientCameraCtrl?.dispose();
+        _ingredientCameraCtrl = null;
+      }
     }
   }
 
@@ -91,6 +115,8 @@ class _ScanPageState extends State<ScanPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cameraCtrl.dispose();
+    _ingredientCameraCtrl?.dispose();
+    _ocr.dispose();
     _shakeCtrl.dispose();
     _restoreOverlay();
     super.dispose();
@@ -194,6 +220,103 @@ class _ScanPageState extends State<ScanPage>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Barcode ↔ Ingredients mode switch — only one camera controller is ever
+  // live at a time (mobile_scanner's for barcode, a plain CameraController
+  // for ingredients, since mobile_scanner has no still-capture API).
+  // ─────────────────────────────────────────────────────────────────────────
+  Future<void> _onModeChanged(ScanMode mode) async {
+    if (mode == _mode) return;
+    setState(() {
+      _mode = mode;
+      _processingDetection = false;
+      _capturingText = false;
+    });
+
+    if (mode == ScanMode.ingredients) {
+      _cameraCtrl.stop();
+      await _initIngredientCamera();
+    } else {
+      final ctrl = _ingredientCameraCtrl;
+      _ingredientCameraCtrl = null;
+      await ctrl?.dispose();
+      if (_phase == _ScannerPhase.scanning) await _cameraCtrl.start();
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _initIngredientCamera() async {
+    if (_ingredientCameraCtrl != null) return;
+    final cameras = await availableCameras();
+    if (cameras.isEmpty) return;
+    final backCamera = cameras.firstWhere(
+      (c) => c.lensDirection == CameraLensDirection.back,
+      orElse: () => cameras.first,
+    );
+    final controller = CameraController(
+      backCamera,
+      ResolutionPreset.high,
+      enableAudio: false,
+    );
+    await controller.initialize();
+    if (!mounted) {
+      await controller.dispose();
+      return;
+    }
+    setState(() => _ingredientCameraCtrl = controller);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Ingredients mode: single-shot capture → on-device OCR → analyze-text
+  // ─────────────────────────────────────────────────────────────────────────
+  Future<void> _captureAndRecognizeIngredients() async {
+    if (_phase != _ScannerPhase.scanning) return;
+    if (_processingDetection) return;
+    final ctrl = _ingredientCameraCtrl;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+
+    setState(() {
+      _processingDetection = true;
+      _capturingText = true;
+    });
+    HapticFeedback.mediumImpact();
+
+    try {
+      final file = await ctrl.takePicture();
+      final text = await _ocr.recognizeText(file.path);
+      if (!mounted) return;
+
+      if (text.trim().isEmpty) {
+        setState(() {
+          _processingDetection = false;
+          _capturingText = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No text detected — try again with better lighting.'),
+          ),
+        );
+        return;
+      }
+
+      context.read<ScanBloc>().add(
+            ScanAnalyzeTextRequested(
+              ingredientsText: text,
+              category: (_selectedCategory ?? ScanCategory.food).backendValue,
+            ),
+          );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _processingDetection = false;
+        _capturingText = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Capture failed: $e')),
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Category mismatch: switch and re-run without leaving the page
   // ─────────────────────────────────────────────────────────────────────────
   void _switchCategoryAndRetry(ScanCategory newCategory) {
@@ -234,17 +357,35 @@ class _ScanPageState extends State<ScanPage>
                 isScanning: _phase == _ScannerPhase.scanning,
               ),
 
+              // ── 2b. "Align the ... within the frame" instruction pill
+              if (_phase == _ScannerPhase.scanning)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 100.h,
+                  child: Center(child: _InstructionPill(text: _mode.instructions)),
+                ),
+
+              // ── 2c. Capturing/analyzing overlay (ingredients mode)
+              if (_capturingText)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black54,
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  ),
+                ),
+
               // ── 3. Top status bar
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
                 child: ScanStatusBar(
-                  isScanning: _phase == _ScannerPhase.scanning,
                   flashOn: _flashOn,
-                  category: _phase == _ScannerPhase.categorySelection
-                      ? null
-                      : _selectedCategory,
+                  mode: _mode,
+                  onModeChanged: _onModeChanged,
                   onBack: () => Navigator.of(context).maybePop(),
                   onFlashToggle: _toggleFlash,
                 ),
@@ -256,8 +397,12 @@ class _ScanPageState extends State<ScanPage>
                 left: 0,
                 right: 0,
                 child: ScanBottomBar(
+                  category: _selectedCategory ?? ScanCategory.food,
+                  onCategoryChanged: _switchCategoryAndRetry,
                   onCameraTap: _phase == _ScannerPhase.scanning
-                      ? () => _cameraCtrl.switchCamera()
+                      ? (_mode == ScanMode.barcode
+                          ? () => _cameraCtrl.switchCamera()
+                          : _captureAndRecognizeIngredients)
                       : null,
                 ),
               ),
@@ -298,6 +443,16 @@ class _ScanPageState extends State<ScanPage>
   }
 
   Widget _buildCamera() {
+    if (_mode == ScanMode.ingredients) {
+      final ctrl = _ingredientCameraCtrl;
+      if (ctrl == null || !ctrl.value.isInitialized) {
+        return const ColoredBox(
+          color: Colors.black,
+          child: Center(child: CircularProgressIndicator(color: Colors.white)),
+        );
+      }
+      return CameraPreview(ctrl);
+    }
     return MobileScanner(
       controller: _cameraCtrl,
       onDetect: _onBarcodeDetected,
@@ -307,11 +462,26 @@ class _ScanPageState extends State<ScanPage>
     );
   }
 
-  void _handleScanBlocState(BuildContext context, ScanState state) {
+  Future<void> _handleScanBlocState(BuildContext context, ScanState state) async {
+    if (state is ScanTextAnalysisSuccess) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => IngredientAnalysisResultPage(
+            analysis: state.analysis,
+            category: _selectedCategory ?? ScanCategory.food,
+          ),
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _capturingText = false;
+        _processingDetection = false;
+      });
+      return;
+    }
+
     if (state is ScanBarcodeSuccess) {
       // ── Category mismatch check ────────────────────────────────────────
-      // TODO: confirm the actual field name on ScanResultEntity — adjust
-      // `state.result.category` below to match (e.g. result.productCategory).
       final resultCategory =
           ScanCategoryX.fromBackendLabel(state.result.product.category);
 
@@ -325,37 +495,101 @@ class _ScanPageState extends State<ScanPage>
           onSwitch: () => _switchCategoryAndRetry(resultCategory),
         );
         // Stay on the popup/frozen state until the user decides; don't
-        // pop the page yet.
+        // navigate away yet.
         return;
       }
 
-      // No mismatch (or category unknown) — proceed as before.
-      if (mounted) Navigator.of(context).pop();
+      // No mismatch (or category unknown) — show the confirmation screen.
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ScanConfirmationPage(result: state.result),
+        ),
+      );
+      if (!mounted) return;
+      _resumeBarcodeScanning();
       return;
     }
 
     if (state is ScanFailure) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Scan failed: ${state.message}',
-            style: const TextStyle(color: Colors.white),
-          ),
-          backgroundColor: Colors.red.shade800,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-      // Resume scanning on error
-      if (_phase == _ScannerPhase.done) {
+      if (_mode == ScanMode.barcode && state.isNotFound) {
+        final switchToIngredients = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => const ProductNotFoundPage()),
+        );
+        if (!mounted) return;
+        if (switchToIngredients == true) {
+          setState(() {
+            _phase = _ScannerPhase.scanning;
+            _detectedBarcode = null;
+            _detectedFormat = null;
+            _processingDetection = false;
+          });
+          await _onModeChanged(ScanMode.ingredients);
+        } else {
+          _resumeBarcodeScanning();
+        }
+        return;
+      }
+
+      showToast(context, state.message, icon: Icons.error_outline_rounded);
+
+      if (_mode == ScanMode.ingredients) {
         setState(() {
-          _phase = _ScannerPhase.scanning;
+          _capturingText = false;
           _processingDetection = false;
         });
-        _cameraCtrl.start();
+        return;
       }
+
+      _resumeBarcodeScanning();
     }
+  }
+
+  void _resumeBarcodeScanning() {
+    setState(() {
+      _phase = _ScannerPhase.scanning;
+      _detectedBarcode = null;
+      _detectedFormat = null;
+      _processingDetection = false;
+    });
+    _cameraCtrl.start();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Glass instruction pill shown under the viewfinder ("Align the ... frame")
+// ─────────────────────────────────────────────────────────────────────────────
+class _InstructionPill extends StatelessWidget {
+  final String text;
+  const _InstructionPill({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(30.r),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 10.h),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(30.r),
+            border: Border.all(
+              color: colors.cardBorder.withValues(alpha: 0.6),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

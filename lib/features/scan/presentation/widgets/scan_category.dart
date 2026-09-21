@@ -26,6 +26,12 @@ extension ScanCategoryX on ScanCategory {
       ? const Color(0xFFC77DFF)
       : const Color(0xFF00D58C);
 
+  /// Value sent to the backend's `category` field (`analyze-text`, etc.) —
+  /// matches the backend's own convention (`ProductBase.category`:
+  /// `"food" | "cosmetic" | "household"`), singular "cosmetic".
+  String get backendValue =>
+      this == ScanCategory.cosmetics ? 'cosmetic' : 'food';
+
   /// Maps a raw backend category string to this enum.
   static ScanCategory? fromBackendLabel(String? raw) {
     if (raw == null) return null;

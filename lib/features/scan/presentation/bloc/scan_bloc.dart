@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/error/exceptions.dart';
 import '../../domain/usecases/analyze_text_usecase.dart';
 import '../../domain/usecases/scan_barcode_usecase.dart';
 import 'scan_event.dart';
@@ -26,7 +27,10 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
       final result = await scanBarcodeUseCase(event.barcode);
       emit(ScanBarcodeSuccess(result));
     } catch (e) {
-      emit(ScanFailure(e.toString()));
+      emit(ScanFailure(
+        e.toString(),
+        statusCode: e is ServerException ? e.statusCode : null,
+      ));
     }
   }
 

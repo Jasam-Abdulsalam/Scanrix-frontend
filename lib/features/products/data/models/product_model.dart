@@ -8,9 +8,12 @@ class ProductModel extends ProductEntity {
     required super.name,
     required super.brand,
     required super.category,
+    super.tags,
+    super.quantity,
     required super.ingredients,
     super.overallScore,
     required super.verdict,
+    super.summary,
     super.imageUrl,
     required super.source,
     required super.createdAt,
@@ -23,11 +26,16 @@ class ProductModel extends ProductEntity {
       name: json['name'] as String,
       brand: json['brand'] as String,
       category: json['category'] as String,
+      tags: (json['tags'] as List<dynamic>? ?? [])
+          .map((e) => e as String)
+          .toList(),
+      quantity: json['quantity'] as String?,
       ingredients: (json['ingredients'] as List<dynamic>? ?? [])
           .map((e) => IngredientModel.fromJson(e as Map<String, dynamic>))
           .toList(),
       overallScore: json['overall_score'] as int?,
       verdict: json['verdict'] as String,
+      summary: json['summary'] as String?,
       imageUrl: json['image_url'] as String?,
       source: json['source'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),

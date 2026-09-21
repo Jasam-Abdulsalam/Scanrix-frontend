@@ -4,65 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
-import 'scan_category.dart';
+import 'scan_mode.dart';
 
-class ScanStatusBar extends StatefulWidget {
-  final bool isScanning;
+class ScanStatusBar extends StatelessWidget {
   final bool flashOn;
-  final ScanCategory? category; // NEW
+  final ScanMode mode;
+  final ValueChanged<ScanMode> onModeChanged;
   final VoidCallback onBack;
   final VoidCallback onFlashToggle;
 
   const ScanStatusBar({
     super.key,
-    required this.isScanning,
     required this.flashOn,
-    this.category, // NEW
+    required this.mode,
+    required this.onModeChanged,
     required this.onBack,
     required this.onFlashToggle,
   });
 
   @override
-  State<ScanStatusBar> createState() => _ScanStatusBarState();
-}
-
-class _ScanStatusBarState extends State<ScanStatusBar>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _percentCtrl;
-  late Animation<double> _percentAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _percentCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    );
-    _percentAnim = Tween<double>(begin: 0, end: 75).animate(
-      CurvedAnimation(parent: _percentCtrl, curve: Curves.easeOut),
-    );
-    if (widget.isScanning) _percentCtrl.forward();
-  }
-
-  @override
-  void didUpdateWidget(ScanStatusBar old) {
-    super.didUpdateWidget(old);
-    if (widget.isScanning && !old.isScanning) {
-      _percentCtrl.forward(from: 0);
-    } else if (!widget.isScanning) {
-      _percentCtrl.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _percentCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -70,102 +31,17 @@ class _ScanStatusBarState extends State<ScanStatusBar>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Back button + category badge
-            Row(
-              children: [
-                _CircleIconBtn(
-                  icon: Icons.chevron_left_rounded,
-                  onTap: widget.onBack,
-                ),
-                SizedBox(width: 8.w),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  transitionBuilder: (child, anim) => ScaleTransition(
-                    scale: anim,
-                    child: FadeTransition(opacity: anim, child: child),
-                  ),
-                  child: widget.category != null
-                      ? _CategoryBadge(
-                          key: ValueKey(widget.category),
-                          category: widget.category!,
-                        )
-                      : const SizedBox.shrink(key: ValueKey('none')),
-                ),
-              ],
-            ),
-
-            // Status pill
-            AnimatedBuilder(
-              animation: _percentAnim,
-              builder: (context, _) {
-                final pct = widget.isScanning
-                    ? _percentAnim.value.toInt()
-                    : 100;
-                final label = widget.isScanning
-                    ? 'Scanning … $pct%'
-                    : 'Detected!';
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(40.r),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 18.w, vertical: 8.h),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        borderRadius: BorderRadius.circular(40.r),
-                        border: Border.all(
-                          color: colors.cardBorder.withValues(alpha: 0.6),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (widget.isScanning) ...[
-                            SizedBox(
-                              width: 10.r,
-                              height: 10.r,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  colors.neonEmerald,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 8.w),
-                          ] else ...[
-                            Icon(
-                              Icons.check_circle_rounded,
-                              color: colors.neonEmerald,
-                              size: 12.r,
-                            ),
-                            SizedBox(width: 6.w),
-                          ],
-                          Text(
-                            label,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            // Flash toggle
             _CircleIconBtn(
-              icon: widget.flashOn
-                  ? Icons.flash_on_rounded
-                  : Icons.flash_off_rounded,
-              onTap: widget.onFlashToggle,
-              highlight: widget.flashOn,
+              icon: Icons.chevron_left_rounded,
+              onTap: onBack,
+            ),
+            Flexible(
+              child: _ScanModeToggle(mode: mode, onChanged: onModeChanged),
+            ),
+            _CircleIconBtn(
+              icon: flashOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+              onTap: onFlashToggle,
+              highlight: flashOn,
             ),
           ],
         ),
@@ -174,37 +50,102 @@ class _ScanStatusBarState extends State<ScanStatusBar>
   }
 }
 
-class _CategoryBadge extends StatelessWidget {
-  final ScanCategory category;
-  const _CategoryBadge({super.key, required this.category});
+// ─────────────────────────────────────────────────────────────────────────────
+// Barcode | Ingredients segmented pill
+// ─────────────────────────────────────────────────────────────────────────────
+class _ScanModeToggle extends StatelessWidget {
+  final ScanMode mode;
+  final ValueChanged<ScanMode> onChanged;
+
+  const _ScanModeToggle({required this.mode, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return ClipRRect(
       borderRadius: BorderRadius.circular(30.r),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+          padding: EdgeInsets.all(4.r),
           decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.45),
             borderRadius: BorderRadius.circular(30.r),
-            gradient: LinearGradient(colors: category.gradient),
+            border: Border.all(
+              color: colors.cardBorder.withValues(alpha: 0.6),
+              width: 1,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(category.emoji, style: TextStyle(fontSize: 12.sp)),
-              SizedBox(width: 4.w),
-              Text(
-                category.label,
+            children: ScanMode.values
+                .map(
+                  (m) => Flexible(
+                    child: _ModeSegment(
+                      mode: m,
+                      active: m == mode,
+                      onTap: () => onChanged(m),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeSegment extends StatelessWidget {
+  final ScanMode mode;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _ModeSegment({
+    required this.mode,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(26.r),
+          color: active ? colors.neonEmerald.withValues(alpha: 0.14) : null,
+          border: active
+              ? Border.all(color: colors.neonEmerald.withValues(alpha: 0.7))
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              mode.icon,
+              size: 15.r,
+              color: active ? colors.neonEmerald : Colors.white54,
+            ),
+            SizedBox(width: 5.w),
+            Flexible(
+              child: Text(
+                mode.label,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                softWrap: false,
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10.5.sp,
-                  fontWeight: FontWeight.w700,
+                  color: active ? Colors.white : Colors.white54,
+                  fontSize: 12.sp,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
