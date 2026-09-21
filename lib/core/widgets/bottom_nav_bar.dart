@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_theme_colors.dart';
 import 'floating_scan_button.dart';
 
 /// Floating glassmorphic bottom nav (Home/History/Scan/Search/Profile) with
@@ -23,6 +24,7 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 12.h),
       child: SizedBox(
@@ -42,11 +44,18 @@ class BottomNavBar extends StatelessWidget {
                   child: Container(
                     height: 64.h,
                     decoration: BoxDecoration(
-                      color: AppColors.glassFill.withValues(alpha: 0.6),
+                      color: colors.navFill.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(40.r),
                       border: Border.all(
-                        color: AppColors.neonEmerald.withValues(alpha: 0.16),
+                        color: colors.cardBorder,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
@@ -115,7 +124,8 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.neonEmerald : AppColors.secondaryText;
+    final colors = context.colors;
+    final color = selected ? colors.neonEmerald : colors.secondaryText;
 
     return InkWell(
       onTap: onTap,

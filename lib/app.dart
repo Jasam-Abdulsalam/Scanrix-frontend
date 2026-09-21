@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'core/di/injection_container.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_cubit.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/history/presentation/bloc/history_bloc.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
@@ -25,6 +26,7 @@ class ScanrixApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider<ThemeCubit>(create: (_) => sl<ThemeCubit>()),
         BlocProvider<AuthBloc>(create: (_) => sl<AuthBloc>()),
         BlocProvider<ProductBloc>(create: (_) => sl<ProductBloc>()),
         BlocProvider<ScanBloc>(create: (_) => sl<ScanBloc>()),
@@ -33,8 +35,17 @@ class ScanrixApp extends StatelessWidget {
       child: ScreenUtilInit(
         designSize: _designSize,
         minTextAdapt: true,
-        builder: (context, child) =>
-            MaterialApp(title: 'Scanrix', theme: AppTheme.dark, home: home),
+        builder: (context, child) => BlocBuilder<ThemeCubit, ThemeMode>(
+          builder: (context, themeMode) {
+            return MaterialApp(
+              title: 'Scanrix',
+              theme: AppTheme.light,
+              darkTheme: AppTheme.dark,
+              themeMode: themeMode,
+              home: home,
+            );
+          },
+        ),
       ),
     );
   }
