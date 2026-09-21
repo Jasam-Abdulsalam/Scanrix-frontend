@@ -119,17 +119,79 @@ class _NavItem extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
         children: [
-          Icon(icon, color: color, size: 20.r),
-          SizedBox(height: 2.h),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10.sp,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+          // Spotlight: a bright strip "shining" down from the top edge of
+          // the pill, lighting up a soft rounded patch behind the active
+          // item only. Cross-fades so it visually hands off between items
+          // as `selected` moves.
+          Positioned(
+            top: 0,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 220),
+              opacity: selected ? 1 : 0,
+              child: Column(
+                children: [
+                  Container(
+                    width: 22.w,
+                    height: 3.h,
+                    decoration: BoxDecoration(
+                      color: AppColors.neonEmerald,
+                      borderRadius: BorderRadius.circular(2.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.neonEmerald.withValues(alpha: 0.8),
+                          blurRadius: 8.r,
+                          spreadRadius: 1.r,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 44.r,
+                    height: 44.r,
+                    margin: EdgeInsets.only(top: 4.h),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14.r),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppColors.neonEmerald.withValues(alpha: 0.28),
+                          AppColors.neonEmerald.withValues(alpha: 0.0),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.background.withValues(alpha: 0.4),
+                          blurRadius: 10.r,
+                          offset: Offset(0, 6.h),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: 11.h),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color, size: 20.r),
+                SizedBox(height: 2.h),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10.sp,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

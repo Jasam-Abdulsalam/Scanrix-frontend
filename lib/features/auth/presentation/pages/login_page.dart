@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/navigation/main_shell.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
 import '../../../../core/widgets/glass_button.dart';
 import '../../../../core/widgets/google_logo.dart';
-import '../../../home/presentation/pages/home_page.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -51,7 +51,7 @@ class LoginPage extends StatelessWidget {
                 );
               } else {
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const HomePage()),
+                  MaterialPageRoute(builder: (_) => const MainShell()),
                 );
               }
             }

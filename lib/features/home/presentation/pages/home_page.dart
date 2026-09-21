@@ -1,87 +1,59 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../../../core/navigation/bottom_nav_navigation.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/aurora_background.dart';
-import '../../../../core/widgets/bottom_nav_bar.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/quick_action_card.dart';
 
+/// Home tab content — rendered inside `MainShell`'s `IndexedStack`, which
+/// owns the Scaffold/aurora background/`BottomNavBar` shared by all tabs.
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: AuroraBackground(
-          child: Stack(
-            children: [
-              SafeArea(
-                bottom: false,
-                child: Column(
-                  children: [
-                    const _Header(),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.fromLTRB(24.w, 8.h, 24.w, 120.h),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const _WelcomeSection(),
-                            SizedBox(height: 24.h),
-                            const _ScanHealthProductCard(),
-                            SizedBox(height: 28.h),
-                            SizedBox(height: 28.h),
-                            const _SectionHeader(title: 'Quick Actions'),
-                            SizedBox(height: 14.h),
-                            Row(
-                              children: [
-                                const Expanded(
-                                  child: QuickActionCard(
-                                    icon: Icons.assignment_outlined,
-                                    title: 'My Routine',
-                                    subtitle: 'Daily products',
-                                  ),
-                                ),
-                                SizedBox(width: 14.w),
-                                const Expanded(
-                                  child: QuickActionCard(
-                                    icon: Icons.favorite_border_rounded,
-                                    title: 'Saved Products',
-                                    subtitle: 'Your collection',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          const _Header(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(24.w, 8.h, 24.w, 120.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _WelcomeSection(),
+                  SizedBox(height: 24.h),
+                  const _ScanHealthProductCard(),
+                  SizedBox(height: 28.h),
+                  SizedBox(height: 28.h),
+                  const _SectionHeader(title: 'Quick Actions'),
+                  SizedBox(height: 14.h),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: QuickActionCard(
+                          icon: Icons.assignment_outlined,
+                          title: 'My Routine',
+                          subtitle: 'Daily products',
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: SafeArea(
-                  top: false,
-                  child: BottomNavBar(
-                    currentIndex: 0,
-                    onTap: (index) =>
-                        handleBottomNavTap(context, index, currentIndex: 0),
-                    onScanPressed: () => handleScanPressed(context),
+                      SizedBox(width: 14.w),
+                      const Expanded(
+                        child: QuickActionCard(
+                          icon: Icons.favorite_border_rounded,
+                          title: 'Saved Products',
+                          subtitle: 'Your collection',
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -1,15 +1,11 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:scanrix_frontend/features/history/presentation/pages/history_page.dart';
 
-import '../../../../core/navigation/bottom_nav_navigation.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/aurora_background.dart';
-import '../../../../core/widgets/bottom_nav_bar.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
@@ -67,125 +63,99 @@ class _ProfilePageState extends State<ProfilePage> {
             : (state is AuthProfileCompleteSuccess ? state.user : null);
         final isLoadingUser = user == null && state is AuthLoading;
 
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle.light,
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: AuroraBackground(
-              child: Stack(
-                children: [
-                  // Positioned.fill pins this to the full screen height
-                  // regardless of content length — a bare SingleChildScrollView
-                  // here would size itself to its own content instead, which
-                  // shrinks the Stack (and drags the Positioned bottom nav up
-                  // with it) whenever the content gets shorter.
-                  Positioned.fill(
-                    child: SafeArea(
-                      bottom: false,
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.only(bottom: 120.h),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // ── Top bar + centered hero ───────────────────
-                            Padding(
-                              padding: EdgeInsets.fromLTRB(24.w, 12.h, 24.w, 0),
-                              child: _TopBar(
-                                onEditTap: () => _openEditProfile(user),
-                              ),
-                            ),
-                            SizedBox(height: 20.h),
-                            _ProfileHero(
-                              user: user,
-                              isLoading: isLoadingUser,
-                              onEditTap: () => _openEditProfile(user),
-                            ),
-                            SizedBox(height: 28.h),
+        // MainShell's IndexedStack gives this tab tight constraints (full
+        // tab-area size) regardless of content length, so a bare
+        // SingleChildScrollView here is safe — no Positioned.fill needed
+        // like the old per-page Scaffold+Stack layout required.
+        return SafeArea(
+          bottom: false,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(bottom: 120.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // ── Top bar + centered hero ───────────────────
+                Padding(
+                  padding: EdgeInsets.fromLTRB(24.w, 12.h, 24.w, 0),
+                  child: _TopBar(onEditTap: () => _openEditProfile(user)),
+                ),
+                SizedBox(height: 20.h),
+                _ProfileHero(
+                  user: user,
+                  isLoading: isLoadingUser,
+                  onEditTap: () => _openEditProfile(user),
+                ),
+                SizedBox(height: 28.h),
 
-                            // ── Settings list (single sheet) ───────────────
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 24.w),
-                              child: _SettingsSheet(
-                                rows: [
-                                  _SettingsRowData(
-                                    icon: Icons.history_rounded,
-                                    title: 'Scan History',
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const HistoryPage(),
-                                      ),
-                                    ),
-                                  ),
-                                  // _SettingsRowData(
-                                  //   icon: Icons.notifications_none_rounded,
-                                  //   title: 'Notifications',
-                                  //   onTap: () {},
-                                  // ),
-                                  _SettingsRowData(
-                                    icon: Icons.privacy_tip_outlined,
-                                    title: 'Privacy Policy',
-                                    onTap: () {},
-                                  ),
-                                  // _SettingsRowData(
-                                  //   icon: Icons.description_outlined,
-                                  //   title: 'Terms & Conditions',
-                                  //   onTap: () {},
-                                  // ),
-                                  // _SettingsRowData(
-                                  //   icon: Icons.help_outline_rounded,
-                                  //   title: 'Help & Support',
-                                  //   onTap: () {},
-                                  // ),
-                                ],
-                              ),
+                // ── Settings list (single sheet) ───────────────
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: _SettingsSheet(
+                    rows: [
+                      _SettingsRowData(
+                        icon: Icons.history_rounded,
+                        title: 'Scan History',
+                        // HistoryPage is a tab-content widget with no
+                        // Scaffold of its own (MainShell owns that for the
+                        // tab flow) — give this standalone drill-in push
+                        // its own bare Scaffold.
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const Scaffold(
+                              body: HistoryPage(),
                             ),
-                            SizedBox(height: 28.h),
-
-                            // ── Logout / Delete account ─────────────────────
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 24.w),
-                              child: Column(
-                                children: [
-                                  _LogoutButton(),
-                                  SizedBox(height: 12.h),
-                                  _DeleteAccountButton(),
-                                  SizedBox(height: 12.h),
-                                  Center(
-                                    child: Text(
-                                      'Scanrix v1.0.0',
-                                      style: TextStyle(
-                                        color: AppColors.secondaryText
-                                            .withValues(alpha: 0.5),
-                                        fontSize: 11.sp,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-
-                  // ── Bottom nav ─────────────────────────────────────
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: SafeArea(
-                      top: false,
-                      child: BottomNavBar(
-                        currentIndex: 4,
-                        onTap: (index) =>
-                            handleBottomNavTap(context, index, currentIndex: 4),
-                        onScanPressed: () => handleScanPressed(context),
+                      // _SettingsRowData(
+                      //   icon: Icons.notifications_none_rounded,
+                      //   title: 'Notifications',
+                      //   onTap: () {},
+                      // ),
+                      _SettingsRowData(
+                        icon: Icons.privacy_tip_outlined,
+                        title: 'Privacy Policy',
+                        onTap: () {},
                       ),
-                    ),
+                      // _SettingsRowData(
+                      //   icon: Icons.description_outlined,
+                      //   title: 'Terms & Conditions',
+                      //   onTap: () {},
+                      // ),
+                      // _SettingsRowData(
+                      //   icon: Icons.help_outline_rounded,
+                      //   title: 'Help & Support',
+                      //   onTap: () {},
+                      // ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                SizedBox(height: 28.h),
+
+                // ── Logout / Delete account ─────────────────────
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Column(
+                    children: [
+                      _LogoutButton(),
+                      SizedBox(height: 12.h),
+                      _DeleteAccountButton(),
+                      SizedBox(height: 12.h),
+                      Center(
+                        child: Text(
+                          'Scanrix v1.0.0',
+                          style: TextStyle(
+                            color: AppColors.secondaryText.withValues(
+                              alpha: 0.5,
+                            ),
+                            fontSize: 11.sp,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );

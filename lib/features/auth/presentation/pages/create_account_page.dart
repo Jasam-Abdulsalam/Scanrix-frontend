@@ -7,11 +7,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/navigation/main_shell.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/primary_button.dart';
-import '../../../home/presentation/pages/home_page.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -159,7 +159,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
               ).showSnackBar(SnackBar(content: Text(state.message)));
             } else if (state is AuthProfileCompleteSuccess) {
               Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const HomePage()),
+                MaterialPageRoute(builder: (_) => const MainShell()),
               );
             }
           },

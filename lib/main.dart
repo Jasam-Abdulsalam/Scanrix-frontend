@@ -4,12 +4,12 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'app.dart';
 import 'core/di/injection_container.dart' as di;
 import 'core/error/exceptions.dart';
+import 'core/navigation/main_shell.dart';
 import 'core/network/api_client.dart';
 import 'core/usecase/usecase.dart';
 import 'features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'features/auth/presentation/pages/create_account_page.dart';
 import 'features/auth/presentation/pages/login_page.dart';
-import 'features/home/presentation/pages/home_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,7 +38,7 @@ Future<Widget> _resolveInitialPage() async {
         email: user.email,
       );
     }
-    return const HomePage();
+    return const MainShell();
   } on ServerException catch (e) {
     if (e.statusCode == 401) {
       // The token really is invalid/expired — the backend said so.
@@ -48,11 +48,11 @@ Future<Widget> _resolveInitialPage() async {
     // Some other backend error (5xx, etc.) doesn't mean the token is bad —
     // don't sign the user out over it. Whatever screen needs fresh user
     // data will just refetch it later.
-    return const HomePage();
+    return const MainShell();
   } catch (_) {
     // Network unreachable, timeout, backend not up yet, etc. — same
     // reasoning: "couldn't reach the server right now" isn't "not logged
     // in", so don't clear a perfectly valid token over it.
-    return const HomePage();
+    return const MainShell();
   }
 }
