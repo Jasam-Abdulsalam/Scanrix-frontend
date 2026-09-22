@@ -67,6 +67,7 @@ class _ScanPageState extends State<ScanPage>
   String? _detectedFormat;
   bool _flashOn = false;
   bool _capturingText = false;
+  bool _identifyingProduct = false;
 
   // Guard against double-firing onDetect / double-tapping capture
   bool _processingDetection = false;
@@ -188,7 +189,10 @@ class _ScanPageState extends State<ScanPage>
   // ─────────────────────────────────────────────────────────────────────────
   void _onPopupComplete() {
     if (!mounted) return;
-    setState(() => _phase = _ScannerPhase.done);
+    setState(() {
+      _phase = _ScannerPhase.done;
+      _identifyingProduct = true;
+    });
 
     // Dispatch to ScanBloc
     context.read<ScanBloc>().add(ScanBarcodeRequested(_detectedBarcode!));
@@ -366,16 +370,12 @@ class _ScanPageState extends State<ScanPage>
                   child: Center(child: _InstructionPill(text: _mode.instructions)),
                 ),
 
-              // ── 2c. Capturing/analyzing overlay (ingredients mode)
-              if (_capturingText)
-                Positioned.fill(
-                  child: Container(
-                    color: Colors.black54,
-                    child: const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    ),
-                  ),
-                ),
+              // ── 2c. Processing overlay — identifying a barcode's product
+              // (POST /scan/ in flight) or analyzing captured ingredient text.
+              if (_identifyingProduct)
+                const _ProcessingOverlay(message: 'Identifying product…')
+              else if (_capturingText)
+                const _ProcessingOverlay(message: 'Analyzing ingredients…'),
 
               // ── 3. Top status bar
               Positioned(
@@ -481,6 +481,8 @@ class _ScanPageState extends State<ScanPage>
     }
 
     if (state is ScanBarcodeSuccess) {
+      setState(() => _identifyingProduct = false);
+
       // ── Category mismatch check ────────────────────────────────────────
       final resultCategory =
           ScanCategoryX.fromBackendLabel(state.result.product.category);
@@ -511,6 +513,8 @@ class _ScanPageState extends State<ScanPage>
     }
 
     if (state is ScanFailure) {
+      if (_identifyingProduct) setState(() => _identifyingProduct = false);
+
       if (_mode == ScanMode.barcode && state.isNotFound) {
         final switchToIngredients = await Navigator.of(context).push<bool>(
           MaterialPageRoute(builder: (_) => const ProductNotFoundPage()),
@@ -552,6 +556,67 @@ class _ScanPageState extends State<ScanPage>
       _processingDetection = false;
     });
     _cameraCtrl.start();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full-screen processing overlay — "Identifying product…" while POST /scan/
+// is in flight, or "Analyzing ingredients…" while OCR text is being sent.
+// ─────────────────────────────────────────────────────────────────────────────
+class _ProcessingOverlay extends StatelessWidget {
+  final String message;
+  const _ProcessingOverlay({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black54,
+        child: Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24.r),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 28.w, vertical: 26.h),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(24.r),
+                  border: Border.all(
+                    color: colors.cardBorder.withValues(alpha: 0.6),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 34.r,
+                      height: 34.r,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.6,
+                        valueColor: AlwaysStoppedAnimation<Color>(colors.neonEmerald),
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

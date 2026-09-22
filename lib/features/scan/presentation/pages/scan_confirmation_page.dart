@@ -96,7 +96,21 @@ class _ProductImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final fallbackAsset = (category ?? ScanCategory.food).assetPath;
+
+    // Fade every frame in instead of popping straight from blank to loaded —
+    // covers both the network-image and the asset-fallback path.
+    Widget fadeIn(Widget child, int? frame, bool wasSynchronouslyLoaded) {
+      if (wasSynchronouslyLoaded) return child;
+      return AnimatedOpacity(
+        opacity: frame == null ? 0 : 1,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        child: child,
+      );
+    }
+
     return Center(
       child: Container(
         width: 220.w,
@@ -106,25 +120,50 @@ class _ProductImage extends StatelessWidget {
           shape: BoxShape.circle,
           gradient: RadialGradient(
             colors: [
-              context.colors.neonEmerald.withValues(alpha: 0.14),
+              colors.neonEmerald.withValues(alpha: 0.14),
               Colors.transparent,
             ],
           ),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20.r),
-          child: imageUrl == null
-              ? Image.asset(fallbackAsset, fit: BoxFit.cover)
-              : Image.network(
-                  imageUrl!,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                  errorBuilder: (context, error, stack) =>
-                      Image.asset(fallbackAsset, fit: BoxFit.cover),
-                ),
+          child: Container(
+            // Fills the gap while a network image is still loading, instead
+            // of an empty/transparent flash.
+            color: colors.surface,
+            child: imageUrl == null
+                ? Image.asset(
+                    fallbackAsset,
+                    fit: BoxFit.cover,
+                    frameBuilder: (context, child, frame, wasSync) =>
+                        fadeIn(child, frame, wasSync),
+                  )
+                : Image.network(
+                    imageUrl!,
+                    fit: BoxFit.cover,
+                    frameBuilder: (context, child, frame, wasSync) =>
+                        fadeIn(child, frame, wasSync),
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Center(
+                        child: SizedBox(
+                          width: 28.r,
+                          height: 28.r,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            valueColor: AlwaysStoppedAnimation<Color>(colors.neonEmerald),
+                            value: progress.expectedTotalBytes != null
+                                ? progress.cumulativeBytesLoaded /
+                                    progress.expectedTotalBytes!
+                                : null,
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stack) =>
+                        Image.asset(fallbackAsset, fit: BoxFit.cover),
+                  ),
+          ),
         ),
       ),
     );
