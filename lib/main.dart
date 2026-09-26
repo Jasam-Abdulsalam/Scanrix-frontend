@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:scanrix_frontend/core/screens/splash_screen.dart';
 
 import 'app.dart';
 import 'core/di/injection_container.dart' as di;
@@ -15,7 +16,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
   await di.init();
-  runApp(ScanrixApp(home: await _resolveInitialPage()));
+  runApp(ScanrixApp(home: await SplashScreen()));
 }
 
 /// A persisted token alone isn't enough to know where to land: it only

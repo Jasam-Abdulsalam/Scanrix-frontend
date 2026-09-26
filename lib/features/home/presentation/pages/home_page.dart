@@ -85,11 +85,7 @@ class _Header extends StatelessWidget {
           SizedBox(width: 8.w),
           Text(
             'Scanrix',
-            style: TextStyle(
-              color: AppColors.white,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontFamily: 'Audiowide', fontSize: 40, color: Colors.white),
           ),
           const Spacer(),
           const _CircleIconButton(
