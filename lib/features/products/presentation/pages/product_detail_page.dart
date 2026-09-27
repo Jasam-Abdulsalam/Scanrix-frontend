@@ -61,54 +61,69 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Scaffold(
-      backgroundColor: colors.background,
-      appBar: AppBar(
-        backgroundColor: colors.background,
-        elevation: 0,
-        title: Text(
-          widget.initialProduct?.name ?? 'Analysis',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: BlocConsumer<ProductBloc, ProductState>(
-        // `ProductBloc` is a single app-wide instance (see app.dart) reused
-        // across every scan — guard every state against this page's own
-        // barcode so a leftover state from a *different* previous scan
-        // never bleeds into this instance before the fresh dispatch resolves.
-        listener: (context, state) {
-          if (state is ProductLoaded && state.product.barcode == widget.barcode) {
-            if (state.product.isAnalyzing) {
-              _maybeStartPolling(state.product);
-            } else {
-              _stopPolling();
-            }
+    return BlocConsumer<ProductBloc, ProductState>(
+      // `ProductBloc` is a single app-wide instance (see app.dart) reused
+      // across every scan — guard every state against this page's own
+      // barcode so a leftover state from a *different* previous scan
+      // never bleeds into this instance before the fresh dispatch resolves.
+      listener: (context, state) {
+        if (state is ProductLoaded && state.product.barcode == widget.barcode) {
+          if (state.product.isAnalyzing) {
+            _maybeStartPolling(state.product);
+          } else {
+            _stopPolling();
           }
-        },
-        builder: (context, state) {
-          final product = state is ProductLoaded && state.product.barcode == widget.barcode
-              ? state.product
-              : widget.initialProduct;
+        }
+      },
+      builder: (context, state) {
+        final product = state is ProductLoaded && state.product.barcode == widget.barcode
+            ? state.product
+            : widget.initialProduct;
 
-          if (product == null) {
-            if (state is ProductFailure) {
-              return _ErrorState(message: state.message);
-            }
-            return const Center(child: CircularProgressIndicator());
+        if (product == null) {
+          if (state is ProductFailure) {
+            return Scaffold(
+              backgroundColor: colors.background,
+              appBar: AppBar(backgroundColor: colors.background, elevation: 0),
+              body: _ErrorState(message: state.message),
+            );
           }
+          return Scaffold(
+            backgroundColor: colors.background,
+            appBar: AppBar(backgroundColor: colors.background, elevation: 0),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
 
-          if (product.isAnalyzing) {
-            return _AnalyzingState(product: product);
-          }
+        if (product.isAnalyzing) {
+          return Scaffold(
+            backgroundColor: colors.background,
+            appBar: AppBar(
+              backgroundColor: colors.background,
+              elevation: 0,
+              title: Text(
+                product.name,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              ),
+            ),
+            body: _AnalyzingState(product: product),
+          );
+        }
 
-          return AnalysisResultView(
+        return Scaffold(
+          backgroundColor: colors.background,
+          body: AnalysisResultView(
             verdict: product.verdict,
             overallScore: product.overallScore,
             summary: product.summary,
             ingredients: product.ingredients,
-          );
-        },
-      ),
+            productName: product.name,
+            productImageUrl: product.imageUrl,
+            category: product.category,
+            onBack: () => Navigator.of(context).maybePop(),
+          ),
+        );
+      },
     );
   }
 }

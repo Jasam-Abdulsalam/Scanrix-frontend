@@ -14,11 +14,15 @@ import '../widgets/scan_category.dart';
 class IngredientAnalysisResultPage extends StatelessWidget {
   final TextAnalysisEntity analysis;
   final ScanCategory category;
+  final String? productName;
+  final String? productImageUrl;
 
   const IngredientAnalysisResultPage({
     super.key,
     required this.analysis,
     required this.category,
+    this.productName,
+    this.productImageUrl,
   });
 
   @override
@@ -26,26 +30,15 @@ class IngredientAnalysisResultPage extends StatelessWidget {
     final colors = context.colors;
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(
-        backgroundColor: colors.background,
-        elevation: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(category.emoji, style: TextStyle(fontSize: 16.sp)),
-            SizedBox(width: 8.w),
-            Text(
-              'Scanned Ingredients',
-              style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-      ),
       body: AnalysisResultView(
         verdict: analysis.verdict,
         overallScore: analysis.overallScore,
         summary: analysis.summary,
         ingredients: analysis.ingredients,
+        productName: productName ?? 'Scanned ${category.label}',
+        productImageUrl: productImageUrl ?? category.assetPath,
+        category: category.label,
+        onBack: () => Navigator.of(context).maybePop(),
       ),
     );
   }
