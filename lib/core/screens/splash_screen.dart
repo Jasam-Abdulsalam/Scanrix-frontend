@@ -1,4 +1,3 @@
-import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
@@ -131,37 +130,6 @@ class _SplashScreenState extends State<SplashScreen>
                 height: 932,
                 child: Lottie.asset(
                   'assets/lottie/scanrix.lottie',
-                  // The default decodeZip picks the first *.json in the
-                  // archive, which is manifest.json (no ip/op frames) —
-                  // pick the actual animation JSON under a/ instead. It
-                  // also matches images by joining the asset's dirName
-                  // ("/i/", with a leading slash) against the archive
-                  // entry name ("i/...", without one), which never
-                  // matches — so images are resolved by filename here
-                  // instead of relying on that path match.
-                  decoder: (bytes) {
-                    final archive = ZipDecoder().decodeBytes(bytes);
-                    final imagesByName = {
-                      for (final f in archive.files)
-                        if (f.name.startsWith('i/'))
-                          f.name.split('/').last.toLowerCase(): f.content,
-                    };
-                    return LottieComposition.decodeZip(
-                      bytes,
-                      filePicker: (files) => files.firstWhere(
-                        (f) =>
-                            f.name.startsWith('a/') &&
-                            f.name.endsWith('.json'),
-                      ),
-                      imageProviderFactory: (image) {
-                        final content =
-                            imagesByName[image.fileName.toLowerCase()];
-                        return content != null
-                            ? MemoryImage(Uint8List.fromList(content))
-                            : null;
-                      },
-                    );
-                  },
                   delegates: LottieDelegates(
                     text: (initialText) {
                     

@@ -25,21 +25,35 @@ any feature works end-to-end.
 
 ## Commands
 
+The Flutter SDK version is pinned per-project via [fvm](https://fvm.app) (`.fvmrc`) —
+use `fvm flutter`/`fvm dart` instead of the bare commands, otherwise you fall back to
+whatever Flutter is installed globally and may hit SDK-constraint resolution errors
+(e.g. `lottie` requiring a newer Dart than an older global Flutter provides).
+
 ```bash
 # Setup
-flutter pub get
+fvm flutter pub get
 
 # Run the app (needs the backend running — see ../scanrix-backend/CLAUDE.md)
-flutter run
+fvm flutter run
 
 # Static analysis (must stay clean — no issues as of this writing)
-flutter analyze
+fvm flutter analyze
 
 # Tests
-flutter test
+fvm flutter test
 ```
 
-Flutter 3.35.6 / Dart 3.9.2 at time of scaffolding (`flutter --version`). No CI configured.
+For a teammate or a fresh machine cloning this repo:
+
+```bash
+brew install fvm      # or: dart pub global activate fvm (needs Dart pre-installed)
+cd scanrix-frontend
+fvm install           # reads .fvmrc, installs the pinned Flutter version if not cached
+fvm flutter pub get
+```
+
+Pinned via fvm to Flutter 3.47.5 / Dart 3.13.4 (`.fvmrc`). No CI configured.
 
 ## Architecture
 
