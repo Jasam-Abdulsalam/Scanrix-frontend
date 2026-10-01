@@ -70,11 +70,11 @@ flutter_native_splash:
   ios: true
 
   color: "#FFFFFF"
-  image: "assets/images/blank2.png"
+  image: "assets/images/blank3.png"
 
   android_12:
     color: "#FFFFFF"
-    image: "assets/images/blank2.png"
+    image: "assets/images/blank3.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

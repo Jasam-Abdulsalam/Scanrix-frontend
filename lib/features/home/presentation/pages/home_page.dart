@@ -152,22 +152,22 @@ class _WelcomeSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text.rich(
-          TextSpan(
-            style: TextStyle(
-              fontSize: 22.sp,
-              fontWeight: FontWeight.bold,
-              color: AppColors.white,
-            ),
-            children: [
-              const TextSpan(text: 'Welcome to '),
-              TextSpan(
-                text: 'Scanrix!',
-                style: TextStyle(color: colors.neonEmerald),
-              ),
-            ],
-          ),
-        ),
+        // Text.rich(
+        //   TextSpan(
+        //     style: TextStyle(
+        //       fontSize: 22.sp,
+        //       fontWeight: FontWeight.bold,
+        //       color: AppColors.white,
+        //     ),
+        //     children: [
+        //       const TextSpan(text: 'Welcome to '),
+        //       TextSpan(
+        //         text: 'Scanrix!',
+        //         style: TextStyle(color: colors.neonEmerald),
+        //       ),
+        //     ],
+        //   ),
+        // ),
         SizedBox(height: 4.h),
         Text(
           'Ready to scan your first product?',
