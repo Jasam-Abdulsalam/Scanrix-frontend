@@ -120,6 +120,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             productName: product.name,
             productImageUrl: product.imageUrl,
             category: product.category,
+            brand: product.brand,
+            quantity: product.quantity,
             onBack: () => Navigator.of(context).maybePop(),
           ),
         );

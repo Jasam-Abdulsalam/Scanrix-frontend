@@ -17,27 +17,27 @@ import '../../domain/entities/ingredient_entity.dart';
 /// can't pull `neonEmerald` from the current theme.
 extension VerdictDisplay on String {
   Color get verdictColor => switch (this) {
-        'safe' => const Color(0xFF25E28B),
-        'caution' => _amber,
-        'avoid' => _red,
-        _ => const Color(0xFF8E9E96), // unknown / error
-      };
+    'safe' => const Color(0xFF25E28B),
+    'caution' => _amber,
+    'avoid' => _red,
+    _ => const Color(0xFF8E9E96), // unknown / error
+  };
 
   IconData get verdictIcon => switch (this) {
-        'safe' => Icons.check_circle_rounded,
-        'caution' => Icons.warning_rounded,
-        'avoid' => Icons.dangerous_rounded,
-        'error' => Icons.error_outline_rounded,
-        _ => Icons.help_outline_rounded,
-      };
+    'safe' => Icons.check_circle_rounded,
+    'caution' => Icons.warning_rounded,
+    'avoid' => Icons.dangerous_rounded,
+    'error' => Icons.error_outline_rounded,
+    _ => Icons.help_outline_rounded,
+  };
 
   String get verdictLabel => switch (this) {
-        'safe' => 'Safe',
-        'caution' => 'Use With Caution',
-        'avoid' => 'Avoid',
-        'error' => 'Analysis Failed',
-        _ => 'Unable To Determine',
-      };
+    'safe' => 'Safe',
+    'caution' => 'Use With Caution',
+    'avoid' => 'Avoid',
+    'error' => 'Analysis Failed',
+    _ => 'Unable To Determine',
+  };
 }
 
 /// Semantic warning/danger shades. Not part of `AppThemeColors` (which only
@@ -74,6 +74,8 @@ class AnalysisResultView extends StatelessWidget {
   final String? productName;
   final String? productImageUrl;
   final String? category;
+  final String? brand;
+  final String? quantity;
   final String skinType;
   final VoidCallback? onBack;
   final VoidCallback? onFavorite;
@@ -91,6 +93,8 @@ class AnalysisResultView extends StatelessWidget {
     this.productName,
     this.productImageUrl,
     this.category,
+    this.brand,
+    this.quantity,
     this.skinType = 'your skin',
     this.onBack,
     this.onFavorite,
@@ -107,7 +111,8 @@ class AnalysisResultView extends StatelessWidget {
     final good = ingredients.where((i) => i.concerns.isEmpty).toList();
     // Fall back to a verdict-derived score so the gauge always has something
     // to draw, even before a numeric score is wired up end-to-end.
-    final score = overallScore ??
+    final score =
+        overallScore ??
         switch (verdict) {
           'safe' => 85,
           'caution' => 55,
@@ -126,79 +131,120 @@ class AnalysisResultView extends StatelessWidget {
           stops: const [0.0, 0.5, 1.0],
         ),
       ),
-      child: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 40.h),
-          children: [
-            _TopBar(onBack: onBack, onFavorite: onFavorite, isFavorite: isFavorite, colors: colors),
-            SizedBox(height: 8.h),
-            // Always rendered — with graceful fallbacks for a missing image
-            // or name — so this section is never silently skipped.
-            _ProductHero(
-              imageUrl: productImageUrl,
-              name: productName,
-              category: category,
-              score: score,
-              band: band,
-              colors: colors,
-            ),
-            SizedBox(height: 20.h),
-            if (summary != null && summary!.trim().isNotEmpty) ...[
-              _SummaryPill(summary: summary!, colors: colors),
-              SizedBox(height: 20.h),
-            ],
-            GlassCard(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-              child: Column(
-                children: [
-                  _HighlightRow(
-                    icon: Icons.eco_rounded,
-                    iconColor: colors.neonEmerald,
-                    title: 'Safe for $skinType',
-                    subtitle: band.color == colors.neonEmerald
-                        ? 'Non-comedogenic formula that won\'t clog pores.'
-                        : 'Check ingredients below before regular use.',
-                    colors: colors,
-                  ),
-                  _RowDivider(colors: colors),
-                  _HighlightRow(
-                    icon: Icons.science_rounded,
-                    iconColor: colors.neonEmerald,
-                    title: 'Good Ingredients',
-                    subtitle: good.isNotEmpty
-                        ? 'Contains ${good.take(3).map((i) => i.name).join(', ')}.'
-                        : 'No standout beneficial ingredients found.',
-                    colors: colors,
-                  ),
-                  if (concerning.isNotEmpty) ...[
-                    _RowDivider(colors: colors),
-                    _HighlightRow(
-                      icon: Icons.warning_rounded,
-                      iconColor: _amber,
-                      title: 'Watch out',
-                      subtitle:
-                          'Contains ${concerning.first.name}${concerning.first.concerns.isNotEmpty ? ' which may ${concerning.first.concerns.first}' : ''}.',
-                      colors: colors,
-                    ),
-                  ],
-                ],
+      child: Stack(
+        children: [
+          // Decorative leaf, top-right, behind the content.
+          Positioned(
+            top: 0,
+            right: 0,
+            width: 230.w,
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: 0.4,
+                child: Image.asset(
+                  'assets/images/plant.png',
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
-            SizedBox(height: 24.h),
-            _PrimaryButton(label: 'View Alternatives', onTap: onViewAlternatives, colors: colors),
-            SizedBox(height: 12.h),
-            _OutlinedButton(label: 'See Full Analysis', onTap: onSeeFullAnalysis, colors: colors),
-            SizedBox(height: 16.h),
-            Center(
-              child: _AddToRoutineButton(onTap: onAddToRoutine, colors: colors),
+          ),
+          SafeArea(
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 40.h),
+              children: [
+                _TopBar(
+                  onBack: onBack,
+                  onFavorite: onFavorite,
+                  isFavorite: isFavorite,
+                  colors: colors,
+                ),
+                SizedBox(height: 16.h),
+                // Always rendered — with graceful fallbacks for a missing image
+                // or name — so this section is never silently skipped.
+                _ProductHero(
+                  imageUrl: productImageUrl,
+                  name: productName,
+                  brand: brand,
+                  quantity: quantity,
+                  category: category,
+                  colors: colors,
+                ),
+                SizedBox(height: 24.h),
+                _AssessmentCard(
+                  score: score,
+                  band: band,
+                  summary: summary,
+                  colors: colors,
+                ),
+                SizedBox(height: 20.h),
+                GlassCard(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 6.h,
+                  ),
+                  child: Column(
+                    children: [
+                      _HighlightRow(
+                        icon: Icons.eco_rounded,
+                        iconColor: colors.neonEmerald,
+                        title: 'Safe for $skinType',
+                        subtitle: band.color == colors.neonEmerald
+                            ? 'Non-comedogenic formula that won\'t clog pores.'
+                            : 'Check ingredients below before regular use.',
+                        colors: colors,
+                      ),
+                      _RowDivider(colors: colors),
+                      _HighlightRow(
+                        icon: Icons.science_rounded,
+                        iconColor: colors.neonEmerald,
+                        title: 'Good Ingredients',
+                        subtitle: good.isNotEmpty
+                            ? 'Contains ${good.take(3).map((i) => i.name).join(', ')}.'
+                            : 'No standout beneficial ingredients found.',
+                        colors: colors,
+                      ),
+                      if (concerning.isNotEmpty) ...[
+                        _RowDivider(colors: colors),
+                        _HighlightRow(
+                          icon: Icons.warning_rounded,
+                          iconColor: _amber,
+                          title: 'Watch out',
+                          subtitle:
+                              'Contains ${concerning.first.name}${concerning.first.concerns.isNotEmpty ? ' which may ${concerning.first.concerns.first}' : ''}.',
+                          colors: colors,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(height: 24.h),
+                _PrimaryButton(
+                  label: 'View Alternatives',
+                  onTap: onViewAlternatives,
+                  colors: colors,
+                ),
+                SizedBox(height: 12.h),
+                _OutlinedButton(
+                  label: 'See Full Analysis',
+                  onTap: onSeeFullAnalysis,
+                  colors: colors,
+                ),
+                SizedBox(height: 16.h),
+                Center(
+                  child: _AddToRoutineButton(
+                    onTap: onAddToRoutine,
+                    colors: colors,
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                if (ingredients.isNotEmpty) ...[
+                  SizedBox(height: 8.h),
+                  _IngredientListCard(ingredients: ingredients, colors: colors),
+                ],
+              ],
             ),
-            SizedBox(height: 12.h),
-            if (ingredients.isNotEmpty) ...[
-              SizedBox(height: 8.h),
-              _IngredientListCard(ingredients: ingredients, colors: colors),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -210,16 +256,26 @@ class _TopBar extends StatelessWidget {
   final bool isFavorite;
   final AppThemeColors colors;
 
-  const _TopBar({this.onBack, this.onFavorite, this.isFavorite = false, required this.colors});
+  const _TopBar({
+    this.onBack,
+    this.onFavorite,
+    this.isFavorite = false,
+    required this.colors,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _CircleIconButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
         _CircleIconButton(
-          icon: isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          icon: Icons.arrow_back_ios_new_rounded,
+          onTap: onBack,
+        ),
+        _CircleIconButton(
+          icon: isFavorite
+              ? Icons.favorite_rounded
+              : Icons.favorite_border_rounded,
           onTap: onFavorite,
           color: isFavorite ? colors.neonEmerald : Colors.white,
         ),
@@ -233,62 +289,90 @@ class _CircleIconButton extends StatelessWidget {
   final VoidCallback? onTap;
   final Color color;
 
-  const _CircleIconButton({required this.icon, this.onTap, this.color = Colors.white});
+  const _CircleIconButton({
+    required this.icon,
+    this.onTap,
+    this.color = Colors.white,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       customBorder: const CircleBorder(),
-      child: Padding(
-        padding: EdgeInsets.all(8.r),
-        child: Icon(icon, color: color, size: 22.r),
+      child: Container(
+        width: 42.r,
+        height: 42.r,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: colors.iconContainerBg,
+          border: Border.all(color: colors.cardBorder),
+        ),
+        child: Icon(icon, color: color, size: 18.r),
       ),
     );
   }
 }
 
-/// Product image + name + category + circular gauge, laid out the way the
-/// reference screen shows them: image on the left, text/gauge on the right.
+/// Product image on the left; "Analyzed Product" chip, brand (bold) over
+/// product name (lighter), then "quantity • category chip" on the right.
+/// When [brand] isn't given, the first word of [name] is used as the brand.
 class _ProductHero extends StatelessWidget {
   final String? imageUrl;
   final String? name;
+  final String? brand;
+  final String? quantity;
   final String? category;
-  final int score;
-  final _ScoreBand band;
   final AppThemeColors colors;
 
   const _ProductHero({
     this.imageUrl,
     this.name,
+    this.brand,
+    this.quantity,
     this.category,
-    required this.score,
-    required this.band,
     required this.colors,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Backend can return an empty name/brand for products it couldn't
+    // identify; show a placeholder instead of leaving a gap under the chip.
+    final hasIdentity = (name?.trim().isNotEmpty ?? false) || (brand?.trim().isNotEmpty ?? false);
+    final full = hasIdentity ? (name?.trim() ?? '') : 'Unidentified Product';
+    final String line1;
+    final String line2;
+    if (brand != null && brand!.trim().isNotEmpty) {
+      line1 = brand!.trim();
+      // Avoid "Himalaya / Himalaya Neem Face Wash".
+      line2 = full.toLowerCase().startsWith(line1.toLowerCase())
+          ? full.substring(line1.length).trim()
+          : full;
+    } else {
+      final split = full.indexOf(' ');
+      line1 = split == -1 ? full : full.substring(0, split);
+      line2 = split == -1 ? '' : full.substring(split + 1);
+    }
+    final hasQty = quantity != null && quantity!.trim().isNotEmpty;
+
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Expanded(
-          flex: 4,
-          child: AspectRatio(
-            aspectRatio: 0.75,
-            child: _ProductImage(imageUrl: imageUrl, colors: colors),
-          ),
+        SizedBox(
+          width: 150.w,
+          height: 190.h,
+          child: _ProductImage(imageUrl: imageUrl, colors: colors),
         ),
-        SizedBox(width: 16.w),
+        SizedBox(width: 18.w),
         Expanded(
-          flex: 5,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                 decoration: BoxDecoration(
-                  color: colors.iconContainerBg,
+                  color: colors.neonEmerald.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20.r),
                 ),
                 child: Row(
@@ -298,29 +382,139 @@ class _ProductHero extends StatelessWidget {
                     SizedBox(width: 6.w),
                     Text(
                       'Analyzed Product',
-                      style: TextStyle(color: colors.secondaryText, fontSize: 11.5.sp, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: Colors.white, fontSize: 11.5.sp, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 10.h),
-              if (name != null)
+              SizedBox(height: 16.h),
+              if (line1.isNotEmpty)
                 Text(
-                  name!,
-                  style: TextStyle(color: Colors.white, fontSize: 22.sp, fontWeight: FontWeight.w800, height: 1.15),
+                  line1,
+                  style: TextStyle(color: Colors.white, fontSize: 28.sp, fontWeight: FontWeight.w800, height: 1.1),
                 ),
-              if (category != null) ...[
-                SizedBox(height: 4.h),
+              if (line2.isNotEmpty)
                 Text(
-                  category!,
-                  style: TextStyle(color: colors.neonEmerald, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                  line2,
+                  style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w600, height: 1.25),
+                ),
+              if (hasQty || category != null) ...[
+                SizedBox(height: 12.h),
+                Row(
+                  children: [
+                    if (hasQty)
+                      Text(
+                        quantity!,
+                        style: TextStyle(color: colors.secondaryText, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                      ),
+                    if (hasQty && category != null) ...[
+                      SizedBox(width: 8.w),
+                      Container(
+                        width: 4.r,
+                        height: 4.r,
+                        decoration: BoxDecoration(color: colors.secondaryText, shape: BoxShape.circle),
+                      ),
+                      SizedBox(width: 8.w),
+                    ],
+                    if (category != null)
+                      Flexible(
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                          decoration: BoxDecoration(
+                            color: colors.neonEmerald.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20.r),
+                            border: Border.all(color: colors.neonEmerald.withValues(alpha: 0.35)),
+                          ),
+                          child: Text(
+                            category!,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: colors.neonEmerald, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
-              SizedBox(height: 14.h),
-              Center(child: _ScoreGauge(score: score, band: band, colors: colors)),
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// Wide glass card: score ring on the left, "Overall Assessment" text in the
+/// middle, decorative leaf tile on the right.
+class _AssessmentCard extends StatelessWidget {
+  final int score;
+  final _ScoreBand band;
+  final String? summary;
+  final AppThemeColors colors;
+
+  const _AssessmentCard({
+    required this.score,
+    required this.band,
+    required this.summary,
+    required this.colors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final text = (summary != null && summary!.trim().isNotEmpty)
+        ? summary!
+        : 'Based on available ingredient data.';
+    final gaugeSize = 130.r;
+    // The glass card sits behind the ring: it starts at the ring's centre
+    // line (left padding = half the ring) so the ring overlaps its left edge.
+    return Stack(
+      alignment: Alignment.centerLeft,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: gaugeSize / 2),
+          child: GlassCard(
+            padding: EdgeInsets.zero,
+            // The leaf is a Positioned backdrop (not a Row child), so it takes
+            // no layout space: the card's height comes only from the text,
+            // and long text can't be squeezed or stretch the card because of
+            // the icon. GlassCard clips it to the rounded card shape.
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 16.h,
+                  bottom: 16.h,
+                  right: 8.w,
+                  width: 70.w,
+                  child: Opacity(
+                    opacity: 0.5,
+                    child: Image.asset(
+                      'assets/images/glowing leaf.png',
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerRight,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(gaugeSize / 2 + 16.w, 22.h, 44.w, 22.h),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Overall Assessment',
+                        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(height: 6.h),
+                      Text(
+                        text,
+                        style: TextStyle(color: colors.secondaryText, fontSize: 12.5.sp, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        _ScoreGauge(score: score, band: band, colors: colors, size: 130),
       ],
     );
   }
@@ -347,7 +541,11 @@ class _ProductImage extends StatelessWidget {
         borderRadius: radius,
         border: Border.all(color: colors.cardBorder),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 16, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: ClipRRect(
@@ -366,15 +564,25 @@ class _ProductImage extends StatelessWidget {
                     child: SizedBox(
                       width: 22.r,
                       height: 22.r,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: colors.neonEmerald),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colors.neonEmerald,
+                      ),
                     ),
                   );
                 },
-                errorBuilder: (context, error, stackTrace) =>
-                    Icon(Icons.inventory_2_outlined, color: colors.secondaryText, size: 40.r),
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  Icons.inventory_2_outlined,
+                  color: colors.secondaryText,
+                  size: 40.r,
+                ),
               )
             else
-              Icon(Icons.inventory_2_outlined, color: colors.secondaryText, size: 40.r),
+              Icon(
+                Icons.inventory_2_outlined,
+                color: colors.secondaryText,
+                size: 40.r,
+              ),
             // Soft fade at the bottom so a busy real-world photo (floor,
             // hand, background clutter) settles into the card instead of
             // ending on a hard edge.
@@ -388,7 +596,10 @@ class _ProductImage extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [Colors.black.withValues(alpha: 0.35), Colors.transparent],
+                    colors: [
+                      Colors.black.withValues(alpha: 0.35),
+                      Colors.transparent,
+                    ],
                   ),
                 ),
               ),
@@ -414,35 +625,51 @@ class _ScoreGauge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = band.color;
+    final diameter = size.r;
     return SizedBox(
-      width: size.r,
-      height: size.r,
+      width: diameter,
+      height: diameter,
       child: Stack(
         alignment: Alignment.center,
         children: [
+          // Very subtle glow around the ring.
           Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.35), blurRadius: 30, spreadRadius: 2),
-              ],
+              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 16)],
             ),
           ),
+          // Opaque fill only *inside* the stroke, so the card doesn't show
+          // through the ring and nothing dark rims its outer edge.
+          Container(
+            width: diameter - diameter * 0.09 * 2,
+            height: diameter - diameter * 0.09 * 2,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: colors.background),
+          ),
           CustomPaint(
-            size: Size(size.r, size.r),
-            painter: _GaugePainter(progress: (score.clamp(0, 100)) / 100, color: color, trackColor: colors.cardBorder),
+            size: Size(diameter, diameter),
+            painter: _GaugePainter(
+              progress: score.clamp(0, 100) / 100,
+              color: color,
+              trackColor: Colors.white.withValues(alpha: 0.08),
+              strokeWidth: diameter * 0.09,
+            ),
           ),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 '$score',
-                style: TextStyle(color: Colors.white, fontSize: 40.sp, fontWeight: FontWeight.w800, height: 1.0),
+                style: TextStyle(color: Colors.white, fontSize: 34.sp, fontWeight: FontWeight.w800, height: 1.0),
               ),
               SizedBox(height: 2.h),
               Text(
                 band.label,
                 style: TextStyle(color: color, fontSize: 14.sp, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+              ),
+              Text(
+                '/ 100',
+                style: TextStyle(color: colors.secondaryText, fontSize: 11.sp),
               ),
             ],
           ),
@@ -452,71 +679,45 @@ class _ScoreGauge extends StatelessWidget {
   }
 }
 
+/// Ring starting at 12 o'clock, sweeping clockwise by `progress` of a full
+/// turn, with round caps. Solid color (no sweep shader) so the arc's color
+/// can't drift out of sync with its start angle.
 class _GaugePainter extends CustomPainter {
   final double progress; // 0..1
   final Color color;
   final Color trackColor;
+  final double strokeWidth;
 
-  _GaugePainter({required this.progress, required this.color, required this.trackColor});
+  _GaugePainter({
+    required this.progress,
+    required this.color,
+    required this.trackColor,
+    required this.strokeWidth,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 8;
-    final trackPaint = Paint()
-      ..color = trackColor
+    final center = size.center(Offset.zero);
+    final radius = (size.width - strokeWidth) / 2 - 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final base = Paint()
+      ..isAntiAlias = true
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 12
-      ..strokeCap = StrokeCap.round;
-    final progressPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: 0,
-        endAngle: 2 * math.pi * progress,
-        colors: [color.withValues(alpha: 0.5), color],
-      ).createShader(Rect.fromCircle(center: center, radius: radius))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 12
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawCircle(center, radius, trackPaint);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      2 * math.pi * progress,
-      false,
-      progressPaint,
-    );
+    canvas.drawCircle(center, radius, base..color = trackColor);
+    if (progress > 0) {
+      canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * progress, false, base..color = color);
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _GaugePainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.color != color || oldDelegate.trackColor != trackColor;
-}
-
-/// Rounded translucent pill holding the one-line AI summary, centered under
-/// the gauge as in the reference screenshot.
-class _SummaryPill extends StatelessWidget {
-  final String summary;
-  final AppThemeColors colors;
-  const _SummaryPill({required this.summary, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 16.h),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: colors.cardBorder),
-      ),
-      child: Text(
-        summary,
-        textAlign: TextAlign.center,
-        style: TextStyle(color: colors.secondaryText, fontSize: 14.sp, height: 1.4, fontWeight: FontWeight.w500),
-      ),
-    );
-  }
+  bool shouldRepaint(covariant _GaugePainter old) =>
+      old.progress != progress ||
+      old.color != color ||
+      old.trackColor != trackColor ||
+      old.strokeWidth != strokeWidth;
 }
 
 class _RowDivider extends StatelessWidget {
@@ -562,7 +763,10 @@ class _HighlightRow extends StatelessWidget {
             Container(
               width: 42.r,
               height: 42.r,
-              decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.15), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: iconColor, size: 20.r),
             ),
             SizedBox(width: 14.w),
@@ -572,12 +776,20 @@ class _HighlightRow extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   SizedBox(height: 3.h),
                   Text(
                     subtitle,
-                    style: TextStyle(color: colors.secondaryText, fontSize: 12.5.sp, height: 1.35),
+                    style: TextStyle(
+                      color: colors.secondaryText,
+                      fontSize: 12.5.sp,
+                      height: 1.35,
+                    ),
                   ),
                 ],
               ),
@@ -585,7 +797,11 @@ class _HighlightRow extends StatelessWidget {
             SizedBox(width: 8.w),
             Padding(
               padding: EdgeInsets.only(top: 4.h),
-              child: Icon(Icons.chevron_right_rounded, color: colors.secondaryText.withValues(alpha: 0.6), size: 22.r),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                color: colors.secondaryText.withValues(alpha: 0.6),
+                size: 22.r,
+              ),
             ),
           ],
         ),
@@ -614,7 +830,11 @@ class _PrimaryButton extends StatelessWidget {
           gradient: LinearGradient(colors: [colors.neonEmerald, darker]),
           borderRadius: BorderRadius.circular(30.r),
           boxShadow: [
-            BoxShadow(color: colors.neonEmerald.withValues(alpha: 0.35), blurRadius: 20, offset: Offset(0, 8.h)),
+            BoxShadow(
+              color: colors.neonEmerald.withValues(alpha: 0.35),
+              blurRadius: 20,
+              offset: Offset(0, 8.h),
+            ),
           ],
         ),
         child: Row(
@@ -622,10 +842,18 @@ class _PrimaryButton extends StatelessWidget {
           children: [
             Text(
               label,
-              style: TextStyle(color: colors.background, fontSize: 16.sp, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: colors.background,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             SizedBox(width: 6.w),
-            Icon(Icons.chevron_right_rounded, color: colors.background, size: 20.r),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: colors.background,
+              size: 20.r,
+            ),
           ],
         ),
       ),
@@ -638,7 +866,11 @@ class _OutlinedButton extends StatelessWidget {
   final VoidCallback? onTap;
   final AppThemeColors colors;
 
-  const _OutlinedButton({required this.label, this.onTap, required this.colors});
+  const _OutlinedButton({
+    required this.label,
+    this.onTap,
+    required this.colors,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -655,7 +887,11 @@ class _OutlinedButton extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           label,
-          style: TextStyle(color: Colors.white, fontSize: 15.5.sp, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 15.5.sp,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -684,12 +920,20 @@ class _AddToRoutineButton extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: colors.neonEmerald),
               ),
-              child: Icon(Icons.add_rounded, color: colors.neonEmerald, size: 15.r),
+              child: Icon(
+                Icons.add_rounded,
+                color: colors.neonEmerald,
+                size: 15.r,
+              ),
             ),
             SizedBox(width: 8.w),
             Text(
               'Add to My Routine',
-              style: TextStyle(color: colors.neonEmerald, fontSize: 14.5.sp, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: colors.neonEmerald,
+                fontSize: 14.5.sp,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
@@ -715,10 +959,16 @@ class _IngredientListCard extends StatelessWidget {
         children: [
           Text(
             'Ingredients (${ingredients.length})',
-            style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           SizedBox(height: 12.h),
-          ...ingredients.map((i) => _IngredientRow(ingredient: i, colors: colors)),
+          ...ingredients.map(
+            (i) => _IngredientRow(ingredient: i, colors: colors),
+          ),
         ],
       ),
     );
@@ -736,10 +986,10 @@ class _IngredientRow extends StatelessWidget {
     final dotColor = rating == null
         ? colors.secondaryText
         : rating >= 70
-            ? colors.neonEmerald
-            : rating >= 40
-                ? _amber
-                : _red;
+        ? colors.neonEmerald
+        : rating >= 40
+        ? _amber
+        : _red;
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.h),
@@ -759,12 +1009,20 @@ class _IngredientRow extends StatelessWidget {
               children: [
                 Text(
                   ingredient.name,
-                  style: TextStyle(color: Colors.white, fontSize: 13.5.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                if (ingredient.purpose != null && ingredient.purpose!.isNotEmpty)
+                if (ingredient.purpose != null &&
+                    ingredient.purpose!.isNotEmpty)
                   Text(
                     ingredient.purpose!,
-                    style: TextStyle(color: colors.secondaryText, fontSize: 12.sp),
+                    style: TextStyle(
+                      color: colors.secondaryText,
+                      fontSize: 12.sp,
+                    ),
                   ),
               ],
             ),
