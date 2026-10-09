@@ -6,20 +6,22 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../domain/entities/ingredient_entity.dart';
+import '../pages/ingredients_page.dart';
+import 'status_colors.dart';
 
 /// Verdict → display color/label/icon. Shared by the barcode result page
 /// (`ProductDetailPage`) and the ingredients-OCR result page
 /// (`IngredientAnalysisResultPage`) so both flows render identically once
 /// they have a verdict. Kept as a plain string extension (no BuildContext)
-/// since it's used in places without one; `_amber`/`_red` below are the
+/// since it's used in places without one; `kWarnAmber`/`kDangerRed` below are the
 /// same semantic shades used inside this file for FAIR/POOR and watch-out
 /// states, so the two stay visually consistent even though this extension
 /// can't pull `neonEmerald` from the current theme.
 extension VerdictDisplay on String {
   Color get verdictColor => switch (this) {
     'safe' => const Color(0xFF25E28B),
-    'caution' => _amber,
-    'avoid' => _red,
+    'caution' => kWarnAmber,
+    'avoid' => kDangerRed,
     _ => const Color(0xFF8E9E96), // unknown / error
   };
 
@@ -40,11 +42,6 @@ extension VerdictDisplay on String {
   };
 }
 
-/// Semantic warning/danger shades. Not part of `AppThemeColors` (which only
-/// defines the emerald brand color), so these stay as fixed constants
-/// shared by both theme modes rather than guessed theme tokens.
-const _amber = Color(0xFFF2B33D);
-const _red = Color(0xFFEF5B5B);
 
 /// Score → the short badge word shown inside the gauge ("GOOD" / "FAIR" /
 /// "POOR") and its color. Takes the current `AppThemeColors` so "GOOD"
@@ -55,8 +52,8 @@ typedef _ScoreBand = ({Color color, String label});
 
 _ScoreBand _bandFor(int score, AppThemeColors colors) {
   if (score >= 70) return (color: colors.neonEmerald, label: 'GOOD');
-  if (score >= 40) return (color: _amber, label: 'FAIR');
-  return (color: _red, label: 'POOR');
+  if (score >= 40) return (color: kWarnAmber, label: 'FAIR');
+  return (color: kDangerRed, label: 'POOR');
 }
 
 /// Full analysis screen: app bar (back / favorite), product hero, circular
@@ -108,7 +105,7 @@ class AnalysisResultView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final concerning = ingredients.where((i) => i.concerns.isNotEmpty).toList();
-    final good = ingredients.where((i) => i.concerns.isEmpty).toList();
+    final isCosmetic = _isCosmetic(category);
     // Fall back to a verdict-derived score so the gauge always has something
     // to draw, even before a numeric score is wired up end-to-end.
     final score =
@@ -184,34 +181,71 @@ class AnalysisResultView extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      _HighlightRow(
-                        icon: Icons.eco_rounded,
-                        iconColor: colors.neonEmerald,
-                        title: 'Safe for $skinType',
-                        subtitle: band.color == colors.neonEmerald
-                            ? 'Non-comedogenic formula that won\'t clog pores.'
-                            : 'Check ingredients below before regular use.',
-                        colors: colors,
-                      ),
-                      _RowDivider(colors: colors),
-                      _HighlightRow(
-                        icon: Icons.science_rounded,
-                        iconColor: colors.neonEmerald,
-                        title: 'Good Ingredients',
-                        subtitle: good.isNotEmpty
-                            ? 'Contains ${good.take(3).map((i) => i.name).join(', ')}.'
-                            : 'No standout beneficial ingredients found.',
-                        colors: colors,
-                      ),
-                      if (concerning.isNotEmpty) ...[
+                      // Skin fit only makes sense for cosmetics, and its text
+                      // is derived from the analysed ingredients (no canned claims).
+                      if (isCosmetic) ...[
+                        _HighlightRow(
+                          icon: Icons.eco_rounded,
+                          iconColor: concerning.isEmpty ? colors.neonEmerald : kWarnAmber,
+                          title: 'Skin compatibility',
+                          subtitle: concerning.isEmpty
+                              ? 'No concerns found for $skinType.'
+                              : '${concerning.length} ingredient${concerning.length == 1 ? '' : 's'} flagged for $skinType.',
+                          colors: colors,
+                          onTap: concerning.isEmpty
+                              ? null
+                              : () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => IngredientsPage(
+                                ingredients: ingredients,
+                                productName: productName,
+                                skinType: skinType,
+                                initialFlaggedOnly: true,
+                              ),
+                            ),
+                          ),
+                        ),
                         _RowDivider(colors: colors),
+                      ],
+                      if (ingredients.isNotEmpty)
+                        _HighlightRow(
+                          icon: Icons.science_rounded,
+                          iconColor: colors.neonEmerald,
+                          title: 'Ingredients',
+                          subtitle:
+                              '${ingredients.length} ingredient${ingredients.length == 1 ? '' : 's'}'
+                              '${concerning.isEmpty ? '' : ' · ${concerning.length} flagged'}. Tap to view all.',
+                          colors: colors,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => IngredientsPage(
+                                ingredients: ingredients,
+                                productName: productName,
+                                skinType: skinType,
+                                initialFlaggedOnly: false,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (concerning.isNotEmpty) ...[
+                        if (ingredients.isNotEmpty) _RowDivider(colors: colors),
                         _HighlightRow(
                           icon: Icons.warning_rounded,
-                          iconColor: _amber,
+                          iconColor: kWarnAmber,
                           title: 'Watch out',
                           subtitle:
                               'Contains ${concerning.first.name}${concerning.first.concerns.isNotEmpty ? ' which may ${concerning.first.concerns.first}' : ''}.',
                           colors: colors,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => IngredientsPage(
+                                ingredients: ingredients,
+                                productName: productName,
+                                skinType: skinType,
+                                initialFlaggedOnly: true,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -236,11 +270,6 @@ class AnalysisResultView extends StatelessWidget {
                     colors: colors,
                   ),
                 ),
-                SizedBox(height: 12.h),
-                if (ingredients.isNotEmpty) ...[
-                  SizedBox(height: 8.h),
-                  _IngredientListCard(ingredients: ingredients, colors: colors),
-                ],
               ],
             ),
           ),
@@ -942,93 +971,7 @@ class _AddToRoutineButton extends StatelessWidget {
   }
 }
 
-/// Kept from the original layout: the full scrollable ingredient list below
-/// the fold, for anyone who taps "See Full Analysis" without a separate
-/// route, or as a quick reference on this same page.
-class _IngredientListCard extends StatelessWidget {
-  final List<IngredientEntity> ingredients;
-  final AppThemeColors colors;
-  const _IngredientListCard({required this.ingredients, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: EdgeInsets.all(18.r),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Ingredients (${ingredients.length})',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 15.sp,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          SizedBox(height: 12.h),
-          ...ingredients.map(
-            (i) => _IngredientRow(ingredient: i, colors: colors),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _IngredientRow extends StatelessWidget {
-  final IngredientEntity ingredient;
-  final AppThemeColors colors;
-  const _IngredientRow({required this.ingredient, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    final rating = ingredient.safetyRating;
-    final dotColor = rating == null
-        ? colors.secondaryText
-        : rating >= 70
-        ? colors.neonEmerald
-        : rating >= 40
-        ? _amber
-        : _red;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: EdgeInsets.only(top: 5.h),
-            width: 8.r,
-            height: 8.r,
-            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-          ),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ingredient.name,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.5.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (ingredient.purpose != null &&
-                    ingredient.purpose!.isNotEmpty)
-                  Text(
-                    ingredient.purpose!,
-                    style: TextStyle(
-                      color: colors.secondaryText,
-                      fontSize: 12.sp,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+bool _isCosmetic(String? category) {
+  final c = category?.toLowerCase() ?? '';
+  return c.contains('cosmetic') || c.contains('skin') || c.contains('personal');
 }
