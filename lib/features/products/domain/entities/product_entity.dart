@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'ingredient_entity.dart';
+import 'safety_engine_entity.dart';
 
 /// Mirrors the backend's `ProductResponse` schema (`app/schemas/product.py`).
 ///
@@ -24,6 +25,11 @@ class ProductEntity extends Equatable {
   final String source;
   final DateTime createdAt;
 
+  /// Database-first safety result. Null for products analysed before the
+  /// safety engine existed (or when the endpoint doesn't include it) - the
+  /// UI then falls back to verdict/score/summary only.
+  final SafetyEngine? safetyEngine;
+
   const ProductEntity({
     required this.id,
     required this.barcode,
@@ -39,6 +45,7 @@ class ProductEntity extends Equatable {
     this.imageUrl,
     required this.source,
     required this.createdAt,
+    this.safetyEngine,
   });
 
   bool get isAnalyzing => verdict == 'analyzing';
@@ -59,5 +66,6 @@ class ProductEntity extends Equatable {
         imageUrl,
         source,
         createdAt,
+        safetyEngine,
       ];
 }

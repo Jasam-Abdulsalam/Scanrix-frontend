@@ -1,18 +1,28 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
-import '../../../../core/widgets/glass_card.dart';
 import '../../domain/entities/ingredient_entity.dart';
+<<<<<<< Updated upstream
 import '../pages/ingredients_page.dart';
 import 'status_colors.dart';
+=======
+import '../../domain/entities/safety_engine_entity.dart';
+import 'analysis_actions.dart';
+import 'analysis_hero.dart';
+import 'analysis_highlights_card.dart';
+import 'findings_list_card.dart';
+import 'legacy_ingredient_list_card.dart';
+import 'not_assessed_section.dart';
+import 'safety_disclaimer.dart';
+import 'severity_style.dart';
+>>>>>>> Stashed changes
 
 /// Verdict → display color/label/icon. Shared by the barcode result page
 /// (`ProductDetailPage`) and the ingredients-OCR result page
 /// (`IngredientAnalysisResultPage`) so both flows render identically once
 /// they have a verdict. Kept as a plain string extension (no BuildContext)
+<<<<<<< Updated upstream
 /// since it's used in places without one; `kWarnAmber`/`kDangerRed` below are the
 /// same semantic shades used inside this file for FAIR/POOR and watch-out
 /// states, so the two stay visually consistent even though this extension
@@ -24,6 +34,19 @@ extension VerdictDisplay on String {
     'avoid' => kDangerRed,
     _ => const Color(0xFF8E9E96), // unknown / error
   };
+=======
+/// since it's used in places without one; `kWarningAmber`/`kDangerRed`
+/// (severity_style.dart) are the same shades used for FAIR/POOR and
+/// watch-out states, so the two stay consistent even though this extension
+/// can't pull `neonEmerald` from the current theme.
+extension VerdictDisplay on String {
+  Color get verdictColor => switch (this) {
+        'safe' => const Color(0xFF25E28B),
+        'caution' => kWarningAmber,
+        'avoid' => kDangerRed,
+        _ => const Color(0xFF8E9E96), // unknown / error
+      };
+>>>>>>> Stashed changes
 
   IconData get verdictIcon => switch (this) {
     'safe' => Icons.check_circle_rounded,
@@ -42,6 +65,7 @@ extension VerdictDisplay on String {
   };
 }
 
+<<<<<<< Updated upstream
 
 /// Score → the short badge word shown inside the gauge ("GOOD" / "FAIR" /
 /// "POOR") and its color. Takes the current `AppThemeColors` so "GOOD"
@@ -56,24 +80,37 @@ _ScoreBand _bandFor(int score, AppThemeColors colors) {
   return (color: kDangerRed, label: 'POOR');
 }
 
+=======
+>>>>>>> Stashed changes
 /// Full analysis screen: app bar (back / favorite), product hero, circular
-/// score gauge, one-line summary, up to three highlight rows (safety fit,
-/// good ingredients, watch-outs), and the primary actions.
+/// score gauge, one-line summary, the highlights card, the primary actions,
+/// then the detailed sections.
 ///
-/// [productName] and [productImageUrl] are optional — the hero still
+/// With a [safetyEngine] the detail sections are built from its findings
+/// (recognised list, "Not assessed", disclaimer). Without one - an older
+/// cached barcode result - it renders verdict/score/summary plus the legacy
+/// [ingredients] list. [unknownIngredients] is the OCR response's top-level
+/// list of names the database couldn't match.
+///
+/// [productName] and [productImageUrl] are optional - the hero still
 /// renders without them (placeholder icon, no name line) so this also
 /// works for flows without a resolved product identity.
 class AnalysisResultView extends StatelessWidget {
   final String verdict;
   final int? overallScore;
   final String? summary;
+  final SafetyEngine? safetyEngine;
+  final List<String> unknownIngredients;
   final List<IngredientEntity> ingredients;
   final String? productName;
   final String? productImageUrl;
   final String? category;
+<<<<<<< Updated upstream
   final String? brand;
   final String? quantity;
   final String skinType;
+=======
+>>>>>>> Stashed changes
   final VoidCallback? onBack;
   final VoidCallback? onFavorite;
   final VoidCallback? onViewAlternatives;
@@ -86,13 +123,18 @@ class AnalysisResultView extends StatelessWidget {
     required this.verdict,
     required this.overallScore,
     required this.summary,
-    required this.ingredients,
+    this.safetyEngine,
+    this.unknownIngredients = const [],
+    this.ingredients = const [],
     this.productName,
     this.productImageUrl,
     this.category,
+<<<<<<< Updated upstream
     this.brand,
     this.quantity,
     this.skinType = 'your skin',
+=======
+>>>>>>> Stashed changes
     this.onBack,
     this.onFavorite,
     this.onViewAlternatives,
@@ -104,8 +146,11 @@ class AnalysisResultView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+<<<<<<< Updated upstream
     final concerning = ingredients.where((i) => i.concerns.isNotEmpty).toList();
     final isCosmetic = _isCosmetic(category);
+=======
+>>>>>>> Stashed changes
     // Fall back to a verdict-derived score so the gauge always has something
     // to draw, even before a numeric score is wired up end-to-end.
     final score =
@@ -116,7 +161,7 @@ class AnalysisResultView extends StatelessWidget {
           'avoid' => 20,
           _ => 50,
         };
-    final band = _bandFor(score, colors);
+    final band = scoreBandFor(score, colors);
 
     return Container(
       decoration: BoxDecoration(
@@ -128,6 +173,7 @@ class AnalysisResultView extends StatelessWidget {
           stops: const [0.0, 0.5, 1.0],
         ),
       ),
+<<<<<<< Updated upstream
       child: Stack(
         children: [
           // Decorative leaf, top-right, behind the content.
@@ -274,8 +320,65 @@ class AnalysisResultView extends StatelessWidget {
             ),
           ),
         ],
+=======
+      child: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 40.h),
+          children: [
+            _TopBar(onBack: onBack, onFavorite: onFavorite, isFavorite: isFavorite, colors: colors),
+            SizedBox(height: 8.h),
+            // Always rendered - with graceful fallbacks for a missing image
+            // or name - so this section is never silently skipped.
+            AnalysisHero(
+              imageUrl: productImageUrl,
+              name: productName,
+              category: category,
+              score: score,
+              band: band,
+              colors: colors,
+            ),
+            SizedBox(height: 20.h),
+            if (summary != null && summary!.trim().isNotEmpty) ...[
+              _SummaryPill(summary: summary!, colors: colors),
+              SizedBox(height: 20.h),
+            ],
+            AnalysisHighlightsCard(safetyEngine: safetyEngine, legacyIngredients: ingredients),
+            SizedBox(height: 24.h),
+            AnalysisPrimaryButton(label: 'View Alternatives', onTap: onViewAlternatives, colors: colors),
+            SizedBox(height: 12.h),
+            AnalysisOutlinedButton(label: 'See Full Analysis', onTap: onSeeFullAnalysis, colors: colors),
+            SizedBox(height: 16.h),
+            Center(child: AddToRoutineButton(onTap: onAddToRoutine, colors: colors)),
+            SizedBox(height: 20.h),
+            ...(_details(colors)),
+          ],
+        ),
+>>>>>>> Stashed changes
       ),
     );
+  }
+
+  List<Widget> _details(AppThemeColors colors) {
+    final engine = safetyEngine;
+    if (engine == null) {
+      return [
+        if (ingredients.isNotEmpty) LegacyIngredientListCard(ingredients: ingredients, colors: colors),
+      ];
+    }
+    final recognised = engine.findings.where((f) => !f.isNotAssessed).toList();
+    final notAssessed = NotAssessedSection.merge(
+      engine.notAssessed.map((f) => f.rawName),
+      unknownIngredients,
+    );
+    return [
+      FindingsListCard(findings: recognised),
+      if (notAssessed.isNotEmpty) ...[
+        SizedBox(height: 16.h),
+        NotAssessedSection(names: notAssessed),
+      ],
+      SizedBox(height: 20.h),
+      SafetyDisclaimer(text: engine.disclaimer),
+    ];
   }
 }
 
@@ -344,6 +447,7 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
+<<<<<<< Updated upstream
 /// Product image on the left; "Analyzed Product" chip, brand (bold) over
 /// product name (lighter), then "quantity • category chip" on the right.
 /// When [brand] isn't given, the first word of [name] is used as the brand.
@@ -975,3 +1079,30 @@ bool _isCosmetic(String? category) {
   final c = category?.toLowerCase() ?? '';
   return c.contains('cosmetic') || c.contains('skin') || c.contains('personal');
 }
+=======
+/// Rounded translucent pill holding the one-line AI summary, centered under
+/// the gauge as in the reference screenshot.
+class _SummaryPill extends StatelessWidget {
+  final String summary;
+  final AppThemeColors colors;
+  const _SummaryPill({required this.summary, required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 16.h),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: colors.cardBorder),
+      ),
+      child: Text(
+        summary,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: colors.secondaryText, fontSize: 14.sp, height: 1.4, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+}
+>>>>>>> Stashed changes

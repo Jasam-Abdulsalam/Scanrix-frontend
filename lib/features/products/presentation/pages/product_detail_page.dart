@@ -116,6 +116,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             verdict: product.verdict,
             overallScore: product.overallScore,
             summary: product.summary,
+            safetyEngine: product.safetyEngine,
             ingredients: product.ingredients,
             productName: product.name,
             productImageUrl: product.imageUrl,

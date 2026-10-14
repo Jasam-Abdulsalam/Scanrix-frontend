@@ -5,8 +5,8 @@ import '../../data/models/text_analysis_model.dart';
 import '../entities/text_analysis_entity.dart';
 
 /// POST /scan/analyze-text (`app/api/v1/endpoints/scan.py`) - the OCR path.
-/// Skips the DB and external product lookups, hits the AI synchronously,
-/// returns the analysis inline (nothing persisted server-side).
+/// Runs the database-first safety engine synchronously and returns the result
+/// inline at the top level of the response (nothing persisted server-side).
 class AnalyzeTextUseCase implements UseCase<TextAnalysisEntity, AnalyzeTextParams> {
   final ApiClient apiClient;
 
@@ -21,8 +21,7 @@ class AnalyzeTextUseCase implements UseCase<TextAnalysisEntity, AnalyzeTextParam
         'category': params.category,
       },
     );
-    final map = data as Map<String, dynamic>;
-    return TextAnalysisModel.fromJson(map['analysis'] as Map<String, dynamic>);
+    return TextAnalysisModel.fromJson(data as Map<String, dynamic>);
   }
 }
 

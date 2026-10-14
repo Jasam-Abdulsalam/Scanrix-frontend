@@ -1,23 +1,26 @@
 import 'package:equatable/equatable.dart';
 
-import '../../../products/domain/entities/ingredient_entity.dart';
+import '../../../products/domain/entities/safety_engine_entity.dart';
 
-/// Mirrors the AI analysis shape returned by `POST /scan/analyze-text`
-/// (`app/services/ai_service.py`'s waterfall - Groq -> Gemini -> fallback -
-/// under the `"analysis"` key of the response).
+/// Mirrors the top-level shape of `POST /scan/analyze-text`: the database-first
+/// safety engine result (verdict / score / summary / unknown ingredients) plus
+/// the detailed [safetyEngine] block. There is no per-ingredient list any more
+/// - that lives in `safetyEngine.findings`.
 class TextAnalysisEntity extends Equatable {
-  final int overallScore;
+  final int? overallScore;
   final String verdict;
-  final List<IngredientEntity> ingredients;
   final String? summary;
+  final List<String> unknownIngredients;
+  final SafetyEngine? safetyEngine;
 
   const TextAnalysisEntity({
-    required this.overallScore,
+    this.overallScore,
     required this.verdict,
-    required this.ingredients,
     this.summary,
+    this.unknownIngredients = const [],
+    this.safetyEngine,
   });
 
   @override
-  List<Object?> get props => [overallScore, verdict, ingredients, summary];
+  List<Object?> get props => [overallScore, verdict, summary, unknownIngredients, safetyEngine];
 }
