@@ -1,28 +1,24 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/glass_card.dart';
 import '../../domain/entities/ingredient_entity.dart';
-<<<<<<< Updated upstream
-import '../pages/ingredients_page.dart';
-import 'status_colors.dart';
-=======
 import '../../domain/entities/safety_engine_entity.dart';
-import 'analysis_actions.dart';
-import 'analysis_hero.dart';
+import '../pages/ingredients_page.dart';
 import 'analysis_highlights_card.dart';
 import 'findings_list_card.dart';
-import 'legacy_ingredient_list_card.dart';
+import 'highlight_row.dart';
 import 'not_assessed_section.dart';
 import 'safety_disclaimer.dart';
-import 'severity_style.dart';
->>>>>>> Stashed changes
+import 'status_colors.dart';
 
 /// Verdict → display color/label/icon. Shared by the barcode result page
 /// (`ProductDetailPage`) and the ingredients-OCR result page
 /// (`IngredientAnalysisResultPage`) so both flows render identically once
 /// they have a verdict. Kept as a plain string extension (no BuildContext)
-<<<<<<< Updated upstream
 /// since it's used in places without one; `kWarnAmber`/`kDangerRed` below are the
 /// same semantic shades used inside this file for FAIR/POOR and watch-out
 /// states, so the two stay visually consistent even though this extension
@@ -34,19 +30,6 @@ extension VerdictDisplay on String {
     'avoid' => kDangerRed,
     _ => const Color(0xFF8E9E96), // unknown / error
   };
-=======
-/// since it's used in places without one; `kWarningAmber`/`kDangerRed`
-/// (severity_style.dart) are the same shades used for FAIR/POOR and
-/// watch-out states, so the two stay consistent even though this extension
-/// can't pull `neonEmerald` from the current theme.
-extension VerdictDisplay on String {
-  Color get verdictColor => switch (this) {
-        'safe' => const Color(0xFF25E28B),
-        'caution' => kWarningAmber,
-        'avoid' => kDangerRed,
-        _ => const Color(0xFF8E9E96), // unknown / error
-      };
->>>>>>> Stashed changes
 
   IconData get verdictIcon => switch (this) {
     'safe' => Icons.check_circle_rounded,
@@ -65,7 +48,6 @@ extension VerdictDisplay on String {
   };
 }
 
-<<<<<<< Updated upstream
 
 /// Score → the short badge word shown inside the gauge ("GOOD" / "FAIR" /
 /// "POOR") and its color. Takes the current `AppThemeColors` so "GOOD"
@@ -80,19 +62,19 @@ _ScoreBand _bandFor(int score, AppThemeColors colors) {
   return (color: kDangerRed, label: 'POOR');
 }
 
-=======
->>>>>>> Stashed changes
 /// Full analysis screen: app bar (back / favorite), product hero, circular
-/// score gauge, one-line summary, the highlights card, the primary actions,
-/// then the detailed sections.
+/// score gauge, one-line summary, up to three highlight rows (safety fit,
+/// good ingredients, watch-outs), and the primary actions.
 ///
-/// With a [safetyEngine] the detail sections are built from its findings
-/// (recognised list, "Not assessed", disclaimer). Without one - an older
-/// cached barcode result - it renders verdict/score/summary plus the legacy
-/// [ingredients] list. [unknownIngredients] is the OCR response's top-level
-/// list of names the database couldn't match.
+/// With a [safetyEngine] the highlight rows and the detail sections below
+/// the buttons (recognised list, "Not assessed", disclaimer) are built from
+/// its findings. Without one - an older cached barcode result - the legacy
+/// per-ingredient rows and [IngredientsPage] are used. [unknownIngredients] is
+/// the OCR response's top-level list of names the database couldn't match.
+/// [aiSection] is the optional opt-in "AI verdict" block, shown beside (never
+/// replacing) the database result.
 ///
-/// [productName] and [productImageUrl] are optional - the hero still
+/// [productName] and [productImageUrl] are optional — the hero still
 /// renders without them (placeholder icon, no name line) so this also
 /// works for flows without a resolved product identity.
 class AnalysisResultView extends StatelessWidget {
@@ -101,16 +83,14 @@ class AnalysisResultView extends StatelessWidget {
   final String? summary;
   final SafetyEngine? safetyEngine;
   final List<String> unknownIngredients;
+  final Widget? aiSection;
   final List<IngredientEntity> ingredients;
   final String? productName;
   final String? productImageUrl;
   final String? category;
-<<<<<<< Updated upstream
   final String? brand;
   final String? quantity;
   final String skinType;
-=======
->>>>>>> Stashed changes
   final VoidCallback? onBack;
   final VoidCallback? onFavorite;
   final VoidCallback? onViewAlternatives;
@@ -125,16 +105,14 @@ class AnalysisResultView extends StatelessWidget {
     required this.summary,
     this.safetyEngine,
     this.unknownIngredients = const [],
+    this.aiSection,
     this.ingredients = const [],
     this.productName,
     this.productImageUrl,
     this.category,
-<<<<<<< Updated upstream
     this.brand,
     this.quantity,
     this.skinType = 'your skin',
-=======
->>>>>>> Stashed changes
     this.onBack,
     this.onFavorite,
     this.onViewAlternatives,
@@ -146,11 +124,8 @@ class AnalysisResultView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-<<<<<<< Updated upstream
     final concerning = ingredients.where((i) => i.concerns.isNotEmpty).toList();
     final isCosmetic = _isCosmetic(category);
-=======
->>>>>>> Stashed changes
     // Fall back to a verdict-derived score so the gauge always has something
     // to draw, even before a numeric score is wired up end-to-end.
     final score =
@@ -161,7 +136,7 @@ class AnalysisResultView extends StatelessWidget {
           'avoid' => 20,
           _ => 50,
         };
-    final band = scoreBandFor(score, colors);
+    final band = _bandFor(score, colors);
 
     return Container(
       decoration: BoxDecoration(
@@ -173,7 +148,6 @@ class AnalysisResultView extends StatelessWidget {
           stops: const [0.0, 0.5, 1.0],
         ),
       ),
-<<<<<<< Updated upstream
       child: Stack(
         children: [
           // Decorative leaf, top-right, behind the content.
@@ -220,83 +194,90 @@ class AnalysisResultView extends StatelessWidget {
                   colors: colors,
                 ),
                 SizedBox(height: 20.h),
-                GlassCard(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16.w,
-                    vertical: 6.h,
-                  ),
-                  child: Column(
-                    children: [
-                      // Skin fit only makes sense for cosmetics, and its text
-                      // is derived from the analysed ingredients (no canned claims).
-                      if (isCosmetic) ...[
-                        _HighlightRow(
-                          icon: Icons.eco_rounded,
-                          iconColor: concerning.isEmpty ? colors.neonEmerald : kWarnAmber,
-                          title: 'Skin compatibility',
-                          subtitle: concerning.isEmpty
-                              ? 'No concerns found for $skinType.'
-                              : '${concerning.length} ingredient${concerning.length == 1 ? '' : 's'} flagged for $skinType.',
-                          colors: colors,
-                          onTap: concerning.isEmpty
-                              ? null
-                              : () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => IngredientsPage(
-                                ingredients: ingredients,
-                                productName: productName,
-                                skinType: skinType,
-                                initialFlaggedOnly: true,
+                if (safetyEngine != null)
+                  AnalysisHighlightsCard(safetyEngine: safetyEngine, legacyIngredients: ingredients)
+                else
+                  GlassCard(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 6.h,
+                    ),
+                    child: Column(
+                      children: [
+                        // Skin fit only makes sense for cosmetics, and its text
+                        // is derived from the analysed ingredients (no canned claims).
+                        if (isCosmetic) ...[
+                          HighlightRow(
+                            icon: Icons.eco_rounded,
+                            iconColor: concerning.isEmpty ? colors.neonEmerald : kWarnAmber,
+                            title: 'Skin compatibility',
+                            subtitle: concerning.isEmpty
+                                ? 'No concerns found for $skinType.'
+                                : '${concerning.length} ingredient${concerning.length == 1 ? '' : 's'} flagged for $skinType.',
+                            colors: colors,
+                            onTap: concerning.isEmpty
+                                ? null
+                                : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => IngredientsPage(
+                                  ingredients: ingredients,
+                                  productName: productName,
+                                  skinType: skinType,
+                                  initialFlaggedOnly: true,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        _RowDivider(colors: colors),
+                          RowDivider(colors: colors),
+                        ],
+                        if (ingredients.isNotEmpty)
+                          HighlightRow(
+                            icon: Icons.science_rounded,
+                            iconColor: colors.neonEmerald,
+                            title: 'Ingredients',
+                            subtitle:
+                                '${ingredients.length} ingredient${ingredients.length == 1 ? '' : 's'}'
+                                '${concerning.isEmpty ? '' : ' · ${concerning.length} flagged'}. Tap to view all.',
+                            colors: colors,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => IngredientsPage(
+                                  ingredients: ingredients,
+                                  productName: productName,
+                                  skinType: skinType,
+                                  initialFlaggedOnly: false,
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (concerning.isNotEmpty) ...[
+                          if (ingredients.isNotEmpty) RowDivider(colors: colors),
+                          HighlightRow(
+                            icon: Icons.warning_rounded,
+                            iconColor: kWarnAmber,
+                            title: 'Watch out',
+                            subtitle:
+                                'Contains ${concerning.first.name}${concerning.first.concerns.isNotEmpty ? ' which may ${concerning.first.concerns.first}' : ''}.',
+                            colors: colors,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => IngredientsPage(
+                                  ingredients: ingredients,
+                                  productName: productName,
+                                  skinType: skinType,
+                                  initialFlaggedOnly: true,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                      if (ingredients.isNotEmpty)
-                        _HighlightRow(
-                          icon: Icons.science_rounded,
-                          iconColor: colors.neonEmerald,
-                          title: 'Ingredients',
-                          subtitle:
-                              '${ingredients.length} ingredient${ingredients.length == 1 ? '' : 's'}'
-                              '${concerning.isEmpty ? '' : ' · ${concerning.length} flagged'}. Tap to view all.',
-                          colors: colors,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => IngredientsPage(
-                                ingredients: ingredients,
-                                productName: productName,
-                                skinType: skinType,
-                                initialFlaggedOnly: false,
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (concerning.isNotEmpty) ...[
-                        if (ingredients.isNotEmpty) _RowDivider(colors: colors),
-                        _HighlightRow(
-                          icon: Icons.warning_rounded,
-                          iconColor: kWarnAmber,
-                          title: 'Watch out',
-                          subtitle:
-                              'Contains ${concerning.first.name}${concerning.first.concerns.isNotEmpty ? ' which may ${concerning.first.concerns.first}' : ''}.',
-                          colors: colors,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => IngredientsPage(
-                                ingredients: ingredients,
-                                productName: productName,
-                                skinType: skinType,
-                                initialFlaggedOnly: true,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
-                ),
+                if (aiSection != null) ...[
+                  SizedBox(height: 16.h),
+                  aiSection!,
+                ],
                 SizedBox(height: 24.h),
                 _PrimaryButton(
                   label: 'View Alternatives',
@@ -316,61 +297,26 @@ class AnalysisResultView extends StatelessWidget {
                     colors: colors,
                   ),
                 ),
+                ..._engineDetails(),
               ],
             ),
           ),
         ],
-=======
-      child: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 40.h),
-          children: [
-            _TopBar(onBack: onBack, onFavorite: onFavorite, isFavorite: isFavorite, colors: colors),
-            SizedBox(height: 8.h),
-            // Always rendered - with graceful fallbacks for a missing image
-            // or name - so this section is never silently skipped.
-            AnalysisHero(
-              imageUrl: productImageUrl,
-              name: productName,
-              category: category,
-              score: score,
-              band: band,
-              colors: colors,
-            ),
-            SizedBox(height: 20.h),
-            if (summary != null && summary!.trim().isNotEmpty) ...[
-              _SummaryPill(summary: summary!, colors: colors),
-              SizedBox(height: 20.h),
-            ],
-            AnalysisHighlightsCard(safetyEngine: safetyEngine, legacyIngredients: ingredients),
-            SizedBox(height: 24.h),
-            AnalysisPrimaryButton(label: 'View Alternatives', onTap: onViewAlternatives, colors: colors),
-            SizedBox(height: 12.h),
-            AnalysisOutlinedButton(label: 'See Full Analysis', onTap: onSeeFullAnalysis, colors: colors),
-            SizedBox(height: 16.h),
-            Center(child: AddToRoutineButton(onTap: onAddToRoutine, colors: colors)),
-            SizedBox(height: 20.h),
-            ...(_details(colors)),
-          ],
-        ),
->>>>>>> Stashed changes
       ),
     );
   }
-
-  List<Widget> _details(AppThemeColors colors) {
+  /// Engine-built detail sections: recognised ingredients, "Not assessed" and
+  /// the disclaimer. Empty for legacy results (they use [IngredientsPage]).
+  List<Widget> _engineDetails() {
     final engine = safetyEngine;
-    if (engine == null) {
-      return [
-        if (ingredients.isNotEmpty) LegacyIngredientListCard(ingredients: ingredients, colors: colors),
-      ];
-    }
+    if (engine == null) return const [];
     final recognised = engine.findings.where((f) => !f.isNotAssessed).toList();
     final notAssessed = NotAssessedSection.merge(
       engine.notAssessed.map((f) => f.rawName),
       unknownIngredients,
     );
     return [
+      SizedBox(height: 20.h),
       FindingsListCard(findings: recognised),
       if (notAssessed.isNotEmpty) ...[
         SizedBox(height: 16.h),
@@ -447,7 +393,6 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
-<<<<<<< Updated upstream
 /// Product image on the left; "Analyzed Product" chip, brand (bold) over
 /// product name (lighter), then "quantity • category chip" on the right.
 /// When [brand] isn't given, the first word of [name] is used as the brand.
@@ -853,96 +798,6 @@ class _GaugePainter extends CustomPainter {
       old.strokeWidth != strokeWidth;
 }
 
-class _RowDivider extends StatelessWidget {
-  final AppThemeColors colors;
-  const _RowDivider({required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    return Divider(color: colors.divider, height: 1);
-  }
-}
-
-/// One row inside the highlights card: leading icon in a tinted circle,
-/// title + subtitle, trailing chevron. Tap is a no-op placeholder for now —
-/// wire `onTap` up if each row should push to a detail page.
-class _HighlightRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final AppThemeColors colors;
-  final VoidCallback? onTap;
-
-  const _HighlightRow({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.colors,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12.r),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 14.h),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 42.r,
-              height: 42.r,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: iconColor, size: 20.r),
-            ),
-            SizedBox(width: 14.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(height: 3.h),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: colors.secondaryText,
-                      fontSize: 12.5.sp,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: 8.w),
-            Padding(
-              padding: EdgeInsets.only(top: 4.h),
-              child: Icon(
-                Icons.chevron_right_rounded,
-                color: colors.secondaryText.withValues(alpha: 0.6),
-                size: 22.r,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -1079,30 +934,3 @@ bool _isCosmetic(String? category) {
   final c = category?.toLowerCase() ?? '';
   return c.contains('cosmetic') || c.contains('skin') || c.contains('personal');
 }
-=======
-/// Rounded translucent pill holding the one-line AI summary, centered under
-/// the gauge as in the reference screenshot.
-class _SummaryPill extends StatelessWidget {
-  final String summary;
-  final AppThemeColors colors;
-  const _SummaryPill({required this.summary, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 16.h),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: colors.cardBorder),
-      ),
-      child: Text(
-        summary,
-        textAlign: TextAlign.center,
-        style: TextStyle(color: colors.secondaryText, fontSize: 14.sp, height: 1.4, fontWeight: FontWeight.w500),
-      ),
-    );
-  }
-}
->>>>>>> Stashed changes

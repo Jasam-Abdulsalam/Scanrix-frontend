@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'ai_analysis_entity.dart';
 import 'ingredient_entity.dart';
 import 'safety_engine_entity.dart';
 
@@ -30,6 +31,10 @@ class ProductEntity extends Equatable {
   /// UI then falls back to verdict/score/summary only.
   final SafetyEngine? safetyEngine;
 
+  /// An AI estimate that was already generated for this product (free to show;
+  /// `GET /products/{barcode}` only). Null if nobody has asked for one yet.
+  final AiAnalysis? aiAnalysis;
+
   const ProductEntity({
     required this.id,
     required this.barcode,
@@ -46,6 +51,7 @@ class ProductEntity extends Equatable {
     required this.source,
     required this.createdAt,
     this.safetyEngine,
+    this.aiAnalysis,
   });
 
   bool get isAnalyzing => verdict == 'analyzing';
@@ -67,5 +73,6 @@ class ProductEntity extends Equatable {
         source,
         createdAt,
         safetyEngine,
+        aiAnalysis,
       ];
 }

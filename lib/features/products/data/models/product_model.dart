@@ -1,4 +1,5 @@
 import '../../domain/entities/product_entity.dart';
+import 'ai_analysis_model.dart';
 import 'ingredient_model.dart';
 import 'safety_engine_model.dart';
 
@@ -19,6 +20,7 @@ class ProductModel extends ProductEntity {
     required super.source,
     required super.createdAt,
     super.safetyEngine,
+    super.aiAnalysis,
   });
 
   /// [safetyEngine] overrides `json['safety_engine']` - `POST /scan/` returns it
@@ -44,6 +46,7 @@ class ProductModel extends ProductEntity {
       source: json['source'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       safetyEngine: safetyEngine ?? SafetyEngineModel.tryParse(json['safety_engine']),
+      aiAnalysis: AiAnalysisModel.tryParse(json['ai_analysis']),
     );
   }
 }

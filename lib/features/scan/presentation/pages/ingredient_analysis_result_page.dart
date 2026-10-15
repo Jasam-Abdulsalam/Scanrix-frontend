@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../products/domain/entities/ai_analysis_entity.dart';
+import '../../../products/presentation/widgets/ai_verdict_section.dart';
 import '../../../products/presentation/widgets/analysis_result_view.dart';
 import '../../domain/entities/text_analysis_entity.dart';
 import '../widgets/scan_category.dart';
@@ -14,6 +15,9 @@ import '../widgets/scan_category.dart';
 class IngredientAnalysisResultPage extends StatelessWidget {
   final TextAnalysisEntity analysis;
   final ScanCategory category;
+
+  /// The OCR text behind [analysis]; enables the opt-in AI verdict for it.
+  final String ingredientsText;
   final String? productName;
   final String? productImageUrl;
 
@@ -21,6 +25,7 @@ class IngredientAnalysisResultPage extends StatelessWidget {
     super.key,
     required this.analysis,
     required this.category,
+    this.ingredientsText = '',
     this.productName,
     this.productImageUrl,
   });
@@ -36,6 +41,13 @@ class IngredientAnalysisResultPage extends StatelessWidget {
         summary: analysis.summary,
         safetyEngine: analysis.safetyEngine,
         unknownIngredients: analysis.unknownIngredients,
+        aiSection: ingredientsText.trim().length < 5
+            ? null
+            : AiVerdictSection(
+                request: AiAnalysisRequest.text(ingredientsText, category: category.backendValue),
+                engine: analysis.safetyEngine,
+                verdict: analysis.verdict,
+              ),
         productName: productName ?? 'Scanned ${category.label}',
         productImageUrl: productImageUrl ?? category.assetPath,
         category: category.label,

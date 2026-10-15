@@ -11,7 +11,10 @@ import '../../features/auth/domain/usecases/upload_profile_photo_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/history/domain/usecases/get_scan_history_usecase.dart';
 import '../../features/history/presentation/bloc/history_bloc.dart';
+import '../../features/products/domain/usecases/analyze_with_ai_usecase.dart';
+import '../../features/products/domain/usecases/get_ai_credits_usecase.dart';
 import '../../features/products/domain/usecases/get_product_usecase.dart';
+import '../../features/products/presentation/bloc/ai_analysis_bloc.dart';
 import '../../features/products/presentation/bloc/product_bloc.dart';
 import '../../features/scan/domain/usecases/analyze_text_usecase.dart';
 import '../../features/scan/domain/usecases/scan_barcode_usecase.dart';
@@ -72,6 +75,12 @@ Future<void> init() async {
     () => ProductBloc(getProductUseCase: sl()),
   );
   sl.registerLazySingleton(() => GetProductUseCase(apiClient: sl()));
+  // Opt-in "Get AI verdict": one bloc per result screen (factory), shared use cases.
+  sl.registerFactory(
+    () => AiAnalysisBloc(analyzeWithAiUseCase: sl(), getAiCreditsUseCase: sl()),
+  );
+  sl.registerLazySingleton(() => AnalyzeWithAiUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => GetAiCreditsUseCase(apiClient: sl()));
 
   // ---------------- Scan ----------------
   sl.registerFactory(

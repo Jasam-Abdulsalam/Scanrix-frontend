@@ -2,12 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../domain/entities/safety_engine_entity.dart';
-
-/// Semantic warning/danger shades. Not part of `AppThemeColors` (which only
-/// defines the emerald brand color), so these stay as fixed constants shared
-/// by both theme modes rather than guessed theme tokens.
-const kWarningAmber = Color(0xFFF2B33D);
-const kDangerRed = Color(0xFFEF5B5B);
+import 'status_colors.dart';
 
 extension SeverityStyle on SafetySeverity {
   /// Color for a finding of this severity.
@@ -19,7 +14,7 @@ extension SeverityStyle on SafetySeverity {
     if (!matched) return colors.secondaryText;
     return switch (this) {
       SafetySeverity.none => colors.neonEmerald,
-      SafetySeverity.low || SafetySeverity.medium => kWarningAmber,
+      SafetySeverity.low || SafetySeverity.medium => kWarnAmber,
       SafetySeverity.high || SafetySeverity.critical => kDangerRed,
       SafetySeverity.unknown => colors.secondaryText,
     };

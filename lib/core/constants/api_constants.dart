@@ -25,6 +25,10 @@ class ApiConstants {
   static const String scan = '/scan/';
   static const String analyzeText = '/scan/analyze-text';
 
+  // ai (opt-in "Get AI verdict", see the backend's API_CONTRACT.md section 11)
+  static const String aiAnalyzeProduct = '/ai/analyze-product';
+  static const String aiCredits = '/ai/credits';
+
   // history
   static const String history = '/history/';
 

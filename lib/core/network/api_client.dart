@@ -87,10 +87,21 @@ class ApiClient {
         throw const NetworkException();
       }
       final data = e.response?.data;
-      final message = data is Map && data['detail'] != null
-          ? data['detail'].toString()
-          : e.message ?? 'Request failed';
-      throw ServerException(message: message, statusCode: e.response?.statusCode);
+      final detail = data is Map ? data['detail'] : null;
+      // A structured `detail` ({code, message, ...}) keeps its code and
+      // exposes a readable message; anything else behaves exactly as before.
+      final details = detail is Map ? Map<String, dynamic>.from(detail) : null;
+      final message = details != null
+          ? (details['message']?.toString() ?? detail.toString())
+          : detail != null
+              ? detail.toString()
+              : e.message ?? 'Request failed';
+      throw ServerException(
+        message: message,
+        statusCode: e.response?.statusCode,
+        code: details?['code']?.toString(),
+        details: details,
+      );
     }
   }
 }

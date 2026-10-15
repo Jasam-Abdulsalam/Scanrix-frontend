@@ -7,6 +7,7 @@ import '../../domain/entities/ingredient_entity.dart';
 import '../../domain/entities/safety_engine_entity.dart';
 import 'highlight_row.dart';
 import 'severity_style.dart';
+import 'status_colors.dart';
 
 const _maxNamed = 3;
 
@@ -107,7 +108,7 @@ class AnalysisHighlightsCard extends StatelessWidget {
       if (concerning.isNotEmpty)
         HighlightRow(
           icon: Icons.warning_rounded,
-          iconColor: kWarningAmber,
+          iconColor: kWarnAmber,
           title: 'Watch out',
           subtitle: 'Contains ${concerning.first.name} which may ${concerning.first.concerns.first}.',
           colors: colors,

@@ -27,7 +27,7 @@ Future<void> _pump(WidgetTester t, Widget view) async {
     original?.call(d);
   };
   addTearDown(() => FlutterError.onError = original);
-  t.view.physicalSize = const Size(1125, 6000);
+  t.view.physicalSize = const Size(1125, 15000);
   t.view.devicePixelRatio = 3;
   addTearDown(t.view.reset);
   await t.pumpWidget(_host(view));

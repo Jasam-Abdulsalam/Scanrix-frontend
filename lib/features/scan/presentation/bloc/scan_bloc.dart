@@ -46,7 +46,7 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
           category: event.category,
         ),
       );
-      emit(ScanTextAnalysisSuccess(analysis));
+      emit(ScanTextAnalysisSuccess(analysis, ingredientsText: event.ingredientsText));
     } catch (e) {
       emit(ScanFailure(e.toString()));
     }

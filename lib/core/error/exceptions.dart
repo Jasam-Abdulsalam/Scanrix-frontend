@@ -8,7 +8,18 @@ class ServerException implements Exception {
   final String message;
   final int? statusCode;
 
-  const ServerException({required this.message, this.statusCode});
+  /// Stable machine-readable code when the backend sends a structured
+  /// `detail` (e.g. `ai_credits_exhausted`, `ingredients_missing`). Null for
+  /// plain-string errors. [details] is that whole `detail` object.
+  final String? code;
+  final Map<String, dynamic>? details;
+
+  const ServerException({
+    required this.message,
+    this.statusCode,
+    this.code,
+    this.details,
+  });
 
   @override
   String toString() => message;

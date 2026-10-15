@@ -26,10 +26,14 @@ class ScanBarcodeSuccess extends ScanState {
 class ScanTextAnalysisSuccess extends ScanState {
   final TextAnalysisEntity analysis;
 
-  const ScanTextAnalysisSuccess(this.analysis);
+  /// The OCR text that was analysed. The result page needs it to offer the
+  /// opt-in AI verdict for the same text.
+  final String ingredientsText;
+
+  const ScanTextAnalysisSuccess(this.analysis, {this.ingredientsText = ''});
 
   @override
-  List<Object?> get props => [analysis];
+  List<Object?> get props => [analysis, ingredientsText];
 }
 
 class ScanFailure extends ScanState {

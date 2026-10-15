@@ -9,6 +9,8 @@ import '../../domain/entities/product_entity.dart';
 import '../bloc/product_bloc.dart';
 import '../bloc/product_event.dart';
 import '../bloc/product_state.dart';
+import '../../domain/entities/ai_analysis_entity.dart';
+import '../widgets/ai_verdict_section.dart';
 import '../widgets/analysis_result_view.dart';
 
 /// Barcode-flow result screen. `initialProduct` is what the confirmation
@@ -117,6 +119,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             overallScore: product.overallScore,
             summary: product.summary,
             safetyEngine: product.safetyEngine,
+            aiSection: AiVerdictSection(
+              request: AiAnalysisRequest.barcode(product.barcode),
+              engine: product.safetyEngine,
+              verdict: product.verdict,
+              initial: product.aiAnalysis,
+            ),
             ingredients: product.ingredients,
             productName: product.name,
             productImageUrl: product.imageUrl,

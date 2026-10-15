@@ -162,6 +162,7 @@ phone-sized reference can look off.
 | `auth`     | `POST /auth/register`, `POST /auth/login`, `POST /auth/google` | `AuthTokenEntity` mirrors the `Token` schema. `/auth/google` is the only auth path actually wired to the network so far — see "Google Sign-In" below. |
 | `products` | `GET /products/{barcode}`                       | `ProductEntity.isAnalyzing` is true when `verdict == "analyzing"` — the backend runs AI analysis as a background task, so the product page is expected to **poll** this endpoint until the verdict flips (see backend's scan flow docs). Polling isn't implemented yet. |
 | `scan`     | `POST /scan/`, `POST /scan/analyze-text`        | `analyze-text` is the OCR path — synchronous, nothing persisted server-side. Database-first safety engine: top-level `{verdict, overall_score, summary, unknown_ingredients, safety_engine}` (no `analysis` wrapper, no per-ingredient list). `POST /scan/` adds an optional `safety_engine` sibling of `product`; `ScanResultModel` attaches it to `ProductEntity.safetyEngine`. `SafetyEngine`/`IngredientFinding` live in `products/domain/entities/safety_engine_entity.dart`; `AnalysisResultView` renders findings, a "Not assessed" section (unmatched ingredients are never green) and the disclaimer, and falls back to verdict/score/summary + legacy list when `safetyEngine` is null. |
+| `ai` (inside `products/`) | `POST /ai/analyze-product`, `GET /ai/credits`; `GET /products/{barcode}` may carry a cached `ai_analysis` | Opt-in "Get AI verdict", shown by `AiVerdictSection` (the `aiSection` slot of `AnalysisResultView`) **beside, never replacing,** the database result, only when the result is weak (`verdict == 'unknown'` or `coverage < 0.7`). Always labelled "AI estimate · unverified"; the wording is never "Safe". `AiAnalysisBloc` (one per result screen) uses `droppable()` from `bloc_concurrency`, so a double tap cannot make two paid calls. 6 credits per user per week, shared with future AI features. Structured errors: `ServerException.code` (`ingredients_missing` 422, `ai_credits_exhausted` 429, `ai_unavailable` 503 = not charged). See the backend's API_CONTRACT.md section 11. |
 | `history`  | `GET /history/?limit=`                          | `ScanHistoryEntity` mirrors `history_helper()`'s dict, not a Pydantic schema (backend returns `List[dict]`). |
 
 ### Google Sign-In
@@ -248,6 +249,9 @@ that calls the API.
 - No camera/barcode-scanning or OCR package chosen yet, despite `scan` being the core flow.
 
 ## Gotchas
+
+- `ApiClient` keeps a structured `detail` (`{code, message, ...}`) as `ServerException.code`/`details`; plain-string and list details behave as before.
+- `analysis_result_view.dart` once had a `git stash pop` conflict committed into it (broke the build, fixed). Before committing, run `grep -rn '<<<<<<<' lib test`.
 
 - The Flutter client is expected to **poll** `GET /products/{barcode}` after a scan until
   `verdict` is no longer `"analyzing"` (`"error"`/`"unknown"` are terminal too) — this is a
