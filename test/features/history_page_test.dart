@@ -16,15 +16,19 @@ Future<void> _settle(WidgetTester t) async {
   }
 }
 
+FakeGetHistory? lastFake;
+
 Future<(FakeDeleteEntry, FakeClear)> _pump(
   WidgetTester t, {
   List<ScanHistoryEntity> items = const [],
   Object? error,
+  int? serverPageCap,
 }) async {
   final del = FakeDeleteEntry();
   final clear = FakeClear();
+  final fake = lastFake = FakeGetHistory(items, error: error)..serverPageCap = serverPageCap;
   final bloc = HistoryBloc(
-    getScanHistoryUseCase: FakeGetHistory(items, error: error),
+    getScanHistoryUseCase: fake,
     deleteHistoryEntryUseCase: del,
     clearHistoryUseCase: clear,
   );
@@ -65,6 +69,37 @@ void main() {
     final screenBottom = t.view.physicalSize.height / t.view.devicePixelRatio;
     // The nav bar is ~90 logical px tall (78 + 12 padding); rows must stay clear of it.
     expect(list.bottom, lessThanOrEqualTo(screenBottom - 90));
+  });
+
+  testWidgets('first page size follows the screen height (not a fixed number)', (t) async {
+    await _pump(t, items: [for (var i = 0; i < 60; i++) entry('r$i')]);
+    final limit = lastFake!.requests.first.limit;
+    expect(limit, inInclusiveRange(10, 50));
+    expect(limit, isNot(50)); // a phone screen is not clamped to the maximum
+    expect(find.text('Product r0'), findsOneWidget);
+    expect(find.text('Product r${limit - 1}'), findsNothing); // built lazily, only what is near the screen
+  });
+
+  testWidgets('scrolling to the end loads the next page and the rows continue', (t) async {
+    await _pump(t, items: [for (var i = 0; i < 60; i++) entry('r$i')]);
+    final fake = lastFake!;
+    expect(fake.requests, hasLength(1));
+    await t.drag(find.byType(ListView), const Offset(0, -6000));
+    await _settle(t);
+    expect(fake.requests.length, greaterThanOrEqualTo(2));
+    expect(fake.requests[1].cursor, 'c${fake.requests[0].limit}');
+    await t.drag(find.byType(ListView), const Offset(0, -6000));
+    await _settle(t);
+    expect(fake.requests.length, greaterThanOrEqualTo(3)); // page 3 follows page 2
+    expect(fake.requests[2].cursor, 'c${fake.requests[0].limit * 2}');
+  });
+
+  testWidgets('a first page too short to scroll keeps fetching until the screen is filled', (t) async {
+    await _pump(t, items: [for (var i = 0; i < 40; i++) entry('r$i')], serverPageCap: 2);
+    final fake = lastFake!;
+    // 2 rows cannot fill the screen, so without a scroll the next pages must be requested by themselves.
+    expect(fake.requests.length, greaterThan(3));
+    expect(find.text('Product r5'), findsOneWidget);
   });
 
   testWidgets('a scan whose product was deleted is still listed, with a placeholder', (t) async {

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:scanrix_frontend/features/favorites/presentation/bloc/favorites_bloc.dart';
+import 'package:scanrix_frontend/features/favorites/presentation/bloc/favorites_event.dart';
+import 'package:scanrix_frontend/features/favorites/presentation/bloc/favorites_state.dart';
+import 'package:scanrix_frontend/features/favorites/presentation/pages/favorites_page.dart';
 import 'package:scanrix_frontend/features/history/presentation/pages/history_page.dart';
 import 'package:scanrix_frontend/features/profile/presentation/widgets/overview_card.dart';
 import 'package:scanrix_frontend/features/profile/presentation/widgets/profile_dialogs.dart';
@@ -30,6 +34,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     context.read<AuthBloc>().add(const AuthCurrentUserRequested());
+    context.read<FavoritesBloc>().add(const FavoritesBarcodesRequested()); // for the Favorites count
   }
 
   void _openEditProfile(UserEntity? user) {
@@ -96,6 +101,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _handleAuthState(BuildContext context, AuthState state) {
     if (state is AuthUnauthenticated) {
+      // Forget this account's saved products so the next one never sees them.
+      context.read<FavoritesBloc>().add(const FavoritesReset());
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginPage()),
         (_) => false,
@@ -138,16 +145,21 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         SizedBox(width: 12.w),
         Expanded(
-          child: ProfileOverviewCard(
-            count: '0',
-            title: 'Favorites',
-            subtitle: 'Saved products',
-            iconWidget: Icon(
-              Icons.favorite_border_rounded,
-              color: context.colors.neonEmerald,
-              size: 18.r,
+          child: BlocSelector<FavoritesBloc, FavoritesState, String>(
+            selector: (s) => s.barcodesLoaded ? '${s.barcodes.length}' : '–',
+            builder: (context, count) => ProfileOverviewCard(
+              count: count,
+              title: 'Favorites',
+              subtitle: 'Saved products',
+              iconWidget: Icon(
+                Icons.favorite_border_rounded,
+                color: context.colors.neonEmerald,
+                size: 18.r,
+              ),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FavoritesPage()),
+              ),
             ),
-            onTap: () {},
           ),
         ),
       ],

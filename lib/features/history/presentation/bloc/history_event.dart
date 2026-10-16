@@ -7,16 +7,26 @@ abstract class HistoryEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Loads the list. [silent] keeps the current list on screen while
-/// refreshing (tab re-selected, pull-to-refresh) instead of a spinner.
+/// Loads the first page. [limit] is the page size (the page derives it from the screen height).
+/// [silent] keeps the current list on screen while refreshing instead of a spinner.
 class HistoryRequested extends HistoryEvent {
   final int limit;
   final bool silent;
 
-  const HistoryRequested({this.limit = 50, this.silent = false});
+  const HistoryRequested({this.limit = 20, this.silent = false});
 
   @override
   List<Object?> get props => [limit, silent];
+}
+
+/// Loads the page after the last one shown (infinite scroll).
+class HistoryLoadMore extends HistoryEvent {
+  final int limit;
+
+  const HistoryLoadMore({this.limit = 20});
+
+  @override
+  List<Object?> get props => [limit];
 }
 
 class HistoryEntryDeleted extends HistoryEvent {

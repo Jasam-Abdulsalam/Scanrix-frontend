@@ -393,13 +393,17 @@ class _TopBar extends StatelessWidget {
           icon: Icons.arrow_back_ios_new_rounded,
           onTap: onBack,
         ),
-        _CircleIconButton(
-          icon: isFavorite
-              ? Icons.favorite_rounded
-              : Icons.favorite_border_rounded,
-          onTap: onFavorite,
-          color: isFavorite ? colors.neonEmerald : Colors.white,
-        ),
+        // No handler = nothing to save (e.g. a label scan with no product): no heart.
+        if (onFavorite != null)
+          _CircleIconButton(
+            icon: isFavorite
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
+            onTap: onFavorite,
+            color: isFavorite ? colors.neonEmerald : Colors.white,
+          )
+        else
+          SizedBox(width: 42.r),
       ],
     );
   }

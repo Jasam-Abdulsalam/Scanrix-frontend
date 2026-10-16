@@ -2,7 +2,7 @@ const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 
 
 /// "Today, 2:11 PM" / "Yesterday, 9:05 AM" / "12 Oct" / "12 Oct 2025".
 /// [scannedAt] and [now] are compared in local time. [now] is injectable for tests.
-String formatScanTime(DateTime scannedAt, {DateTime? now}) {
+String formatShortTime(DateTime scannedAt, {DateTime? now}) {
   final t = scannedAt.toLocal();
   final today = now ?? DateTime.now();
   final days = DateTime(today.year, today.month, today.day).difference(DateTime(t.year, t.month, t.day)).inDays;

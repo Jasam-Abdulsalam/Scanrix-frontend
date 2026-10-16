@@ -87,6 +87,14 @@ void main() {
     expect(find.text('Add to My Routine'), findsOneWidget);
   });
 
+  testWidgets('no heart without a handler (label scans have no product to save)', (t) async {
+    await _pump(t, const AnalysisResultView(verdict: 'safe', overallScore: 85, summary: 'ok'));
+    expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
+    expect(find.byIcon(Icons.favorite_rounded), findsNothing);
+    await _pump(t, AnalysisResultView(verdict: 'safe', overallScore: 85, summary: 'ok', onFavorite: () {}, isFavorite: true));
+    expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
+  });
+
   testWidgets('null safetyEngine falls back without crashing', (t) async {
     await _pump(t, const AnalysisResultView(verdict: 'safe', overallScore: 85, summary: 'ok'));
     expect(find.text('85'), findsOneWidget);

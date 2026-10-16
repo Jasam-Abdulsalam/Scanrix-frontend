@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:scanrix_frontend/core/error/exceptions.dart';
+import 'package:scanrix_frontend/core/models/page_result.dart';
 import 'package:scanrix_frontend/core/network/api_client.dart';
 import 'package:scanrix_frontend/core/usecase/usecase.dart';
 import 'package:scanrix_frontend/features/history/domain/entities/scan_history_entity.dart';
@@ -32,20 +35,39 @@ ScanHistoryEntity entry(String id, {String verdict = 'safe', ScanHistoryProduct?
       product: product ?? ScanHistoryProduct(barcode: 'b-$id', name: 'Product $id', brand: 'Brand'),
     );
 
+/// Serves [items] page by page like the backend: the cursor is just "c<next index>".
 class FakeGetHistory implements GetScanHistoryUseCase {
   List<ScanHistoryEntity> items;
   Object? error;
-  int calls = 0;
+
+  /// Fails only requests that carry a cursor (i.e. "load more"), until cleared.
+  Object? errorOnCursor;
+  final List<HistoryPageParams> requests = [];
+  /// The server may return fewer rows than asked (e.g. a page of 2 that cannot fill the screen).
+  int? serverPageCap;
+  Completer<void>? gate; // when set, calls wait for it (to test overlapping requests)
+
   FakeGetHistory(this.items, {this.error});
+
+  int get calls => requests.length;
 
   @override
   ApiClient get apiClient => throw UnimplementedError();
 
   @override
-  Future<List<ScanHistoryEntity>> call(int limit) async {
-    calls++;
+  Future<PageResult<ScanHistoryEntity>> call(HistoryPageParams params) async {
+    requests.add(params);
+    // Answer from the data as it is when the request STARTS (like a server), then optionally wait.
+    final snapshot = List<ScanHistoryEntity>.of(items);
+    final gateNow = params.cursor != null ? gate : null; // only "load more" requests wait
+    if (gateNow != null) await gateNow.future;
     if (error != null) throw error!;
-    return items;
+    if (params.cursor != null && errorOnCursor != null) throw errorOnCursor!;
+    final start = params.cursor == null ? 0 : int.parse(params.cursor!.substring(1));
+    final size = serverPageCap == null ? params.limit : (params.limit < serverPageCap! ? params.limit : serverPageCap!);
+    final end = (start + size).clamp(0, snapshot.length);
+    final more = end < snapshot.length;
+    return PageResult(items: snapshot.sublist(start, end), nextCursor: more ? 'c$end' : null, hasMore: more);
   }
 }
 

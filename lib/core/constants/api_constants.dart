@@ -33,6 +33,11 @@ class ApiConstants {
   static const String history = '/history/';
   static String historyEntry(String id) => '/history/$id';
 
+  // favorites (saved products)
+  static const String favorites = '/favorites/';
+  static const String favoriteBarcodes = '/favorites/barcodes';
+  static String favorite(String barcode) => '/favorites/${Uri.encodeComponent(barcode)}';
+
   /// The backend returns `photo_url` either as an absolute URL (e.g. a
   /// Google profile photo) or, for an uploaded photo, a path relative to
   /// the backend's own host (`/static/...`) — kept host-agnostic

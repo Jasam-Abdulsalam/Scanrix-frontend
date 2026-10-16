@@ -9,6 +9,11 @@ import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/domain/usecases/update_profile_usecase.dart';
 import '../../features/auth/domain/usecases/upload_profile_photo_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/favorites/domain/usecases/add_favorite_usecase.dart';
+import '../../features/favorites/domain/usecases/get_favorite_barcodes_usecase.dart';
+import '../../features/favorites/domain/usecases/get_favorites_usecase.dart';
+import '../../features/favorites/domain/usecases/remove_favorite_usecase.dart';
+import '../../features/favorites/presentation/bloc/favorites_bloc.dart';
 import '../../features/history/domain/usecases/clear_history_usecase.dart';
 import '../../features/history/domain/usecases/delete_history_entry_usecase.dart';
 import '../../features/history/domain/usecases/get_scan_history_usecase.dart';
@@ -102,4 +107,18 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetScanHistoryUseCase(apiClient: sl()));
   sl.registerLazySingleton(() => DeleteHistoryEntryUseCase(apiClient: sl()));
   sl.registerLazySingleton(() => ClearHistoryUseCase(apiClient: sl()));
+
+  // ---------------- Favorites (saved products) ----------------
+  sl.registerFactory(
+    () => FavoritesBloc(
+      getFavoritesUseCase: sl(),
+      getFavoriteBarcodesUseCase: sl(),
+      addFavoriteUseCase: sl(),
+      removeFavoriteUseCase: sl(),
+    ),
+  );
+  sl.registerLazySingleton(() => GetFavoritesUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => GetFavoriteBarcodesUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => AddFavoriteUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => RemoveFavoriteUseCase(apiClient: sl()));
 }

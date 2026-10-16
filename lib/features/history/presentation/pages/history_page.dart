@@ -6,10 +6,11 @@ import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
 import '../../../../core/widgets/toast.dart';
 import '../../../products/presentation/pages/product_detail_page.dart';
-import '../../domain/entities/scan_history_entity.dart';
 import '../bloc/history_bloc.dart';
 import '../bloc/history_event.dart';
 import '../bloc/history_state.dart';
+import '../../../../core/widgets/paged_list_view.dart';
+import '../history_paging.dart';
 import '../widgets/history_item_card.dart';
 
 /// Scan history. Newest first; swipe a row left to delete it, "Clear all" empties the list.
@@ -26,10 +27,15 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
+  bool _requested = false;
+
   @override
-  void initState() {
-    super.initState();
-    context.read<HistoryBloc>().add(const HistoryRequested());
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Not initState: the page size needs MediaQuery (the screen height).
+    if (_requested) return;
+    _requested = true;
+    context.read<HistoryBloc>().add(HistoryRequested(limit: productListPageSize(context)));
   }
 
   @override
@@ -151,8 +157,9 @@ class _Content extends StatelessWidget {
     if (s is HistoryLoaded) {
       return RefreshIndicator(
         color: colors.neonEmerald,
-        onRefresh: () async => context.read<HistoryBloc>().add(const HistoryRequested(silent: true)),
-        child: s.items.isEmpty ? const _Empty() : _List(items: s.items),
+        onRefresh: () async =>
+            context.read<HistoryBloc>().add(HistoryRequested(limit: productListPageSize(context), silent: true)),
+        child: s.items.isEmpty ? const _Empty() : _List(state: s),
       );
     }
     if (s is HistoryFailure) return _Failure(message: s.message);
@@ -161,16 +168,19 @@ class _Content extends StatelessWidget {
 }
 
 class _List extends StatelessWidget {
-  final List<ScanHistoryEntity> items;
-  const _List({required this.items});
+  final HistoryLoaded state;
+  const _List({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 24.h),
+    final items = state.items;
+    return PagedListView(
       itemCount: items.length,
-      separatorBuilder: (_, _) => SizedBox(height: 12.h),
+      hasMore: state.hasMore,
+      loadingMore: state.loadingMore,
+      loadMoreFailed: state.loadMoreFailed,
+      onLoadMore: () => context.read<HistoryBloc>().add(HistoryLoadMore(limit: productListPageSize(context))),
+      padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 24.h),
       itemBuilder: (context, i) {
         final item = items[i];
         final barcode = item.product?.barcode;
@@ -258,7 +268,7 @@ class _Failure extends StatelessWidget {
             ),
             SizedBox(height: 12.h),
             TextButton(
-              onPressed: () => context.read<HistoryBloc>().add(const HistoryRequested()),
+              onPressed: () => context.read<HistoryBloc>().add(HistoryRequested(limit: productListPageSize(context))),
               child: const Text('Try again'),
             ),
           ],

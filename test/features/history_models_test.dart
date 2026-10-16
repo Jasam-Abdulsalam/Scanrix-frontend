@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scanrix_frontend/features/history/data/models/scan_history_model.dart';
-import 'package:scanrix_frontend/features/history/presentation/widgets/history_time.dart';
+import 'package:scanrix_frontend/core/utils/time_format.dart';
 
 import 'history_test_support.dart';
 
@@ -31,14 +31,14 @@ void main() {
   group('formatScanTime', () {
     final now = DateTime(2026, 10, 16, 15);
     test('today, yesterday, this year, other year', () {
-      expect(formatScanTime(DateTime(2026, 10, 16, 14, 5), now: now), 'Today, 2:05 PM');
-      expect(formatScanTime(DateTime(2026, 10, 15, 9, 0), now: now), 'Yesterday, 9:00 AM');
-      expect(formatScanTime(DateTime(2026, 10, 12, 9), now: now), '12 Oct');
-      expect(formatScanTime(DateTime(2025, 3, 1, 9), now: now), '1 Mar 2025');
+      expect(formatShortTime(DateTime(2026, 10, 16, 14, 5), now: now), 'Today, 2:05 PM');
+      expect(formatShortTime(DateTime(2026, 10, 15, 9, 0), now: now), 'Yesterday, 9:00 AM');
+      expect(formatShortTime(DateTime(2026, 10, 12, 9), now: now), '12 Oct');
+      expect(formatShortTime(DateTime(2025, 3, 1, 9), now: now), '1 Mar 2025');
     });
     test('midnight and noon use 12', () {
-      expect(formatScanTime(DateTime(2026, 10, 16, 0, 7), now: now), 'Today, 12:07 AM');
-      expect(formatScanTime(DateTime(2026, 10, 16, 12, 30), now: now), 'Today, 12:30 PM');
+      expect(formatShortTime(DateTime(2026, 10, 16, 0, 7), now: now), 'Today, 12:07 AM');
+      expect(formatShortTime(DateTime(2026, 10, 16, 12, 30), now: now), 'Today, 12:30 PM');
     });
   });
 }

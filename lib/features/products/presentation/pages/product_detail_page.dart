@@ -5,6 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/toast.dart';
+import '../../../favorites/presentation/bloc/favorites_bloc.dart';
+import '../../../favorites/presentation/bloc/favorites_event.dart';
+import '../../../favorites/presentation/bloc/favorites_state.dart';
 import '../../domain/entities/product_entity.dart';
 import '../bloc/product_bloc.dart';
 import '../bloc/product_event.dart';
@@ -40,6 +44,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   void initState() {
     super.initState();
     context.read<ProductBloc>().add(ProductRequested(widget.barcode));
+    context.read<FavoritesBloc>().add(const FavoritesBarcodesRequested()); // fills the heart
   }
 
   void _maybeStartPolling(ProductEntity product) {
@@ -114,24 +119,42 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
         return Scaffold(
           backgroundColor: colors.background,
-          body: AnalysisResultView(
-            verdict: product.verdict,
-            overallScore: product.overallScore,
-            summary: product.summary,
-            safetyEngine: product.safetyEngine,
-            aiSection: AiVerdictSection(
-              request: AiAnalysisRequest.barcode(product.barcode),
-              engine: product.safetyEngine,
-              verdict: product.verdict,
-              initial: product.aiAnalysis,
+          // The heart rebuilds only when THIS product's saved state flips, not on every favorites change.
+          body: BlocSelector<FavoritesBloc, FavoritesState, bool>(
+            selector: (s) => s.barcodes.contains(product.barcode),
+            builder: (context, isFavorite) => BlocListener<FavoritesBloc, FavoritesState>(
+              listenWhen: (a, b) => b.notice != null && a.notice != b.notice,
+              listener: (context, state) {
+                // Only the screen on top shows it (the favorites list can sit above this page).
+                if (ModalRoute.of(context)?.isCurrent ?? true) {
+                  showToast(context, state.notice!, icon: Icons.error_outline_rounded);
+                }
+              },
+              child: AnalysisResultView(
+                verdict: product.verdict,
+                overallScore: product.overallScore,
+                summary: product.summary,
+                safetyEngine: product.safetyEngine,
+                aiSection: AiVerdictSection(
+                  request: AiAnalysisRequest.barcode(product.barcode),
+                  engine: product.safetyEngine,
+                  verdict: product.verdict,
+                  initial: product.aiAnalysis,
+                ),
+                ingredients: product.ingredients,
+                productName: product.name,
+                productImageUrl: product.imageUrl,
+                category: product.category,
+                brand: product.brand,
+                quantity: product.quantity,
+                isFavorite: isFavorite,
+                onFavorite: () {
+                  final bloc = context.read<FavoritesBloc>();
+                  bloc.add(isFavorite ? FavoriteRemoved(product.barcode) : FavoriteAdded(product.barcode));
+                },
+                onBack: () => Navigator.of(context).maybePop(),
+              ),
             ),
-            ingredients: product.ingredients,
-            productName: product.name,
-            productImageUrl: product.imageUrl,
-            category: product.category,
-            brand: product.brand,
-            quantity: product.quantity,
-            onBack: () => Navigator.of(context).maybePop(),
           ),
         );
       },
