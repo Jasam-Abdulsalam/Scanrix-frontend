@@ -34,7 +34,7 @@ Future<void> _pump(WidgetTester t, Widget view) async {
 }
 
 void main() {
-  testWidgets('engine result shows watch-out, coverage, not-assessed, tier badge, disclaimer', (t) async {
+  testWidgets('result screen stays short: summary rows only, lists live on the breakdown page', (t) async {
     await _pump(
       t,
       AnalysisResultView(
@@ -46,16 +46,45 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('Contains Butylated Hydroxyanisole: IARC Group 2B', skipOffstage: false), findsOneWidget);
-    expect(find.text('2 of 3 ingredients recognised', skipOffstage: false), findsOneWidget);
-    expect(find.text('Not assessed (2)', skipOffstage: false), findsOneWidget); // Zorbex-9 deduped
-    expect(find.text('Mystery Gum', skipOffstage: false), findsOneWidget);
-    expect(find.text('Evidence: IARC / Prop 65', skipOffstage: false), findsOneWidget);
-    expect(find.text('Not medical advice.', skipOffstage: false), findsOneWidget);
+    expect(find.text('1 Watch out'), findsOneWidget);
+    expect(find.textContaining(' Good'), findsOneWidget);
+    expect(find.text('2 Not assessed'), findsOneWidget);
+    expect(find.text('Not medical advice.'), findsOneWidget);
+    // Moved off this screen.
+    expect(find.textContaining('Not assessed ('), findsNothing);
+    expect(find.text('Mystery Gum'), findsNothing);
+    expect(find.text('See Full Analysis'), findsNothing);
     // Removed unsupported claims.
-    expect(find.textContaining('Non-comedogenic', skipOffstage: false), findsNothing);
-    expect(find.textContaining('Safe for', skipOffstage: false), findsNothing);
-    expect(find.textContaining('angerous', skipOffstage: false), findsNothing);
+    expect(find.textContaining('Non-comedogenic'), findsNothing);
+    expect(find.textContaining('Safe for'), findsNothing);
+    expect(find.textContaining('angerous'), findsNothing);
+  });
+
+  testWidgets('tapping a pill opens the breakdown on its tab', (t) async {
+    await _pump(
+      t,
+      AnalysisResultView(
+        verdict: 'avoid',
+        overallScore: 32,
+        summary: 'summary text',
+        safetyEngine: SafetyEngineModel.fromJson(safetyEngineJson),
+        unknownIngredients: const ['Zorbex-9', 'Mystery Gum'],
+      ),
+    );
+    await t.tap(find.text('1 Watch out'));
+    await t.pumpAndSettle();
+    expect(find.text('Evidence: IARC / Prop 65'), findsOneWidget);
+    await t.tap(find.text('Not assessed (2)'));
+    await t.pumpAndSettle();
+    expect(find.text('Mystery Gum'), findsOneWidget);
+  });
+
+  testWidgets('Add to My Routine only for cosmetics; View Alternatives always', (t) async {
+    await _pump(t, const AnalysisResultView(verdict: 'safe', overallScore: 85, summary: 'ok', category: 'Food'));
+    expect(find.text('Add to My Routine'), findsNothing);
+    expect(find.text('View Alternatives'), findsOneWidget);
+    await _pump(t, const AnalysisResultView(verdict: 'safe', overallScore: 85, summary: 'ok', category: 'Cosmetic'));
+    expect(find.text('Add to My Routine'), findsOneWidget);
   });
 
   testWidgets('null safetyEngine falls back without crashing', (t) async {

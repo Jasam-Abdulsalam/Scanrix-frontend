@@ -7,11 +7,10 @@ import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../domain/entities/ingredient_entity.dart';
 import '../../domain/entities/safety_engine_entity.dart';
+import '../pages/ingredients_breakdown_page.dart';
 import '../pages/ingredients_page.dart';
 import 'analysis_highlights_card.dart';
-import 'findings_list_card.dart';
 import 'highlight_row.dart';
-import 'not_assessed_section.dart';
 import 'safety_disclaimer.dart';
 import 'status_colors.dart';
 
@@ -47,7 +46,6 @@ extension VerdictDisplay on String {
     _ => 'Unable To Determine',
   };
 }
-
 
 /// Score → the short badge word shown inside the gauge ("GOOD" / "FAIR" /
 /// "POOR") and its color. Takes the current `AppThemeColors` so "GOOD"
@@ -94,7 +92,6 @@ class AnalysisResultView extends StatelessWidget {
   final VoidCallback? onBack;
   final VoidCallback? onFavorite;
   final VoidCallback? onViewAlternatives;
-  final VoidCallback? onSeeFullAnalysis;
   final VoidCallback? onAddToRoutine;
   final bool isFavorite;
 
@@ -116,7 +113,6 @@ class AnalysisResultView extends StatelessWidget {
     this.onBack,
     this.onFavorite,
     this.onViewAlternatives,
-    this.onSeeFullAnalysis,
     this.onAddToRoutine,
     this.isFavorite = false,
   });
@@ -166,138 +162,148 @@ class AnalysisResultView extends StatelessWidget {
             ),
           ),
           SafeArea(
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 40.h),
+            // Stack (not Column) so content scrolls *under* the faded action bar.
+            child: Stack(
               children: [
-                _TopBar(
-                  onBack: onBack,
-                  onFavorite: onFavorite,
-                  isFavorite: isFavorite,
-                  colors: colors,
-                ),
-                SizedBox(height: 16.h),
-                // Always rendered — with graceful fallbacks for a missing image
-                // or name — so this section is never silently skipped.
-                _ProductHero(
-                  imageUrl: productImageUrl,
-                  name: productName,
-                  brand: brand,
-                  quantity: quantity,
-                  category: category,
-                  colors: colors,
-                ),
-                SizedBox(height: 24.h),
-                _AssessmentCard(
-                  score: score,
-                  band: band,
-                  summary: summary,
-                  colors: colors,
-                ),
-                SizedBox(height: 20.h),
-                if (safetyEngine != null)
-                  AnalysisHighlightsCard(safetyEngine: safetyEngine, legacyIngredients: ingredients)
-                else
-                  GlassCard(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 16.w,
-                      vertical: 6.h,
-                    ),
-                    child: Column(
-                      children: [
-                        // Skin fit only makes sense for cosmetics, and its text
-                        // is derived from the analysed ingredients (no canned claims).
-                        if (isCosmetic) ...[
-                          HighlightRow(
-                            icon: Icons.eco_rounded,
-                            iconColor: concerning.isEmpty ? colors.neonEmerald : kWarnAmber,
-                            title: 'Skin compatibility',
-                            subtitle: concerning.isEmpty
-                                ? 'No concerns found for $skinType.'
-                                : '${concerning.length} ingredient${concerning.length == 1 ? '' : 's'} flagged for $skinType.',
-                            colors: colors,
-                            onTap: concerning.isEmpty
-                                ? null
-                                : () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => IngredientsPage(
-                                  ingredients: ingredients,
-                                  productName: productName,
-                                  skinType: skinType,
-                                  initialFlaggedOnly: true,
-                                ),
-                              ),
-                            ),
+                Positioned.fill(
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 130.h),
+                    children: [
+                      _TopBar(
+                        onBack: onBack,
+                        onFavorite: onFavorite,
+                        isFavorite: isFavorite,
+                        colors: colors,
+                      ),
+                      SizedBox(height: 16.h),
+                      // Always rendered — with graceful fallbacks for a missing image
+                      // or name — so this section is never silently skipped.
+                      _ProductHero(
+                        imageUrl: productImageUrl,
+                        name: productName,
+                        brand: brand,
+                        quantity: quantity,
+                        category: category,
+                        colors: colors,
+                      ),
+                      SizedBox(height: 24.h),
+                      _AssessmentCard(
+                        score: score,
+                        band: band,
+                        summary: summary,
+                        colors: colors,
+                      ),
+                      SizedBox(height: 20.h),
+                      if (safetyEngine != null)
+                        AnalysisHighlightsCard(
+                          safetyEngine: safetyEngine,
+                          legacyIngredients: ingredients,
+                          unknownIngredients: unknownIngredients,
+                    onOpenTab: (tab) => _openBreakdown(context, tab),
+                        )
+                      else
+                        GlassCard(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 6.h,
                           ),
-                          RowDivider(colors: colors),
-                        ],
-                        if (ingredients.isNotEmpty)
-                          HighlightRow(
-                            icon: Icons.science_rounded,
-                            iconColor: colors.neonEmerald,
-                            title: 'Ingredients',
-                            subtitle:
-                                '${ingredients.length} ingredient${ingredients.length == 1 ? '' : 's'}'
-                                '${concerning.isEmpty ? '' : ' · ${concerning.length} flagged'}. Tap to view all.',
-                            colors: colors,
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => IngredientsPage(
-                                  ingredients: ingredients,
-                                  productName: productName,
-                                  skinType: skinType,
-                                  initialFlaggedOnly: false,
+                          child: Column(
+                            children: [
+                              // Skin fit only makes sense for cosmetics, and its text
+                              // is derived from the analysed ingredients (no canned claims).
+                              if (isCosmetic) ...[
+                                HighlightRow(
+                                  icon: Icons.eco_rounded,
+                                  iconColor: concerning.isEmpty
+                                      ? colors.neonEmerald
+                                      : kWarnAmber,
+                                  title: 'Skin compatibility',
+                                  subtitle: concerning.isEmpty
+                                      ? 'No concerns found for $skinType.'
+                                      : '${concerning.length} ingredient${concerning.length == 1 ? '' : 's'} flagged for $skinType.',
+                                  colors: colors,
+                                  onTap: concerning.isEmpty
+                                      ? null
+                                      : () => Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (_) => IngredientsPage(
+                                              ingredients: ingredients,
+                                              productName: productName,
+                                              skinType: skinType,
+                                              initialFlaggedOnly: true,
+                                            ),
+                                          ),
+                                        ),
                                 ),
-                              ),
-                            ),
-                          ),
-                        if (concerning.isNotEmpty) ...[
-                          if (ingredients.isNotEmpty) RowDivider(colors: colors),
-                          HighlightRow(
-                            icon: Icons.warning_rounded,
-                            iconColor: kWarnAmber,
-                            title: 'Watch out',
-                            subtitle:
-                                'Contains ${concerning.first.name}${concerning.first.concerns.isNotEmpty ? ' which may ${concerning.first.concerns.first}' : ''}.',
-                            colors: colors,
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => IngredientsPage(
-                                  ingredients: ingredients,
-                                  productName: productName,
-                                  skinType: skinType,
-                                  initialFlaggedOnly: true,
+                                RowDivider(colors: colors),
+                              ],
+                              if (ingredients.isNotEmpty)
+                                HighlightRow(
+                                  icon: Icons.science_rounded,
+                                  iconColor: colors.neonEmerald,
+                                  title: 'Ingredients',
+                                  subtitle:
+                                      '${ingredients.length} ingredient${ingredients.length == 1 ? '' : 's'}'
+                                      '${concerning.isEmpty ? '' : ' · ${concerning.length} flagged'}. Tap to view all.',
+                                  colors: colors,
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => IngredientsPage(
+                                        ingredients: ingredients,
+                                        productName: productName,
+                                        skinType: skinType,
+                                        initialFlaggedOnly: false,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                              if (concerning.isNotEmpty) ...[
+                                if (ingredients.isNotEmpty)
+                                  RowDivider(colors: colors),
+                                HighlightRow(
+                                  icon: Icons.warning_rounded,
+                                  iconColor: kWarnAmber,
+                                  title: 'Watch out',
+                                  subtitle:
+                                      'Contains ${concerning.first.name}${concerning.first.concerns.isNotEmpty ? ' which may ${concerning.first.concerns.first}' : ''}.',
+                                  colors: colors,
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => IngredientsPage(
+                                        ingredients: ingredients,
+                                        productName: productName,
+                                        skinType: skinType,
+                                        initialFlaggedOnly: true,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ],
+                        ),
+                      if (aiSection != null) ...[
+                        SizedBox(height: 16.h),
+                        aiSection!,
                       ],
-                    ),
+                      if (safetyEngine != null) ...[
+                        SizedBox(height: 16.h),
+                        SafetyDisclaimer(text: safetyEngine!.disclaimer),
+                      ],
+                    ],
                   ),
-                if (aiSection != null) ...[
-                  SizedBox(height: 16.h),
-                  aiSection!,
-                ],
-                SizedBox(height: 24.h),
-                _PrimaryButton(
-                  label: 'View Alternatives',
-                  onTap: onViewAlternatives,
-                  colors: colors,
                 ),
-                SizedBox(height: 12.h),
-                _OutlinedButton(
-                  label: 'See Full Analysis',
-                  onTap: onSeeFullAnalysis,
-                  colors: colors,
-                ),
-                SizedBox(height: 16.h),
-                Center(
-                  child: _AddToRoutineButton(
-                    onTap: onAddToRoutine,
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _BottomActions(
+                    onViewAlternatives: onViewAlternatives,
+                    onAddToRoutine: isCosmetic ? onAddToRoutine : null,
+                    showRoutine: isCosmetic,
                     colors: colors,
                   ),
                 ),
-                ..._engineDetails(),
               ],
             ),
           ),
@@ -305,26 +311,63 @@ class AnalysisResultView extends StatelessWidget {
       ),
     );
   }
-  /// Engine-built detail sections: recognised ingredients, "Not assessed" and
-  /// the disclaimer. Empty for legacy results (they use [IngredientsPage]).
-  List<Widget> _engineDetails() {
-    final engine = safetyEngine;
-    if (engine == null) return const [];
-    final recognised = engine.findings.where((f) => !f.isNotAssessed).toList();
-    final notAssessed = NotAssessedSection.merge(
-      engine.notAssessed.map((f) => f.rawName),
-      unknownIngredients,
+
+  void _openBreakdown(BuildContext context, BreakdownTab tab) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => IngredientsBreakdownPage(
+          engine: safetyEngine!,
+          unknownIngredients: unknownIngredients,
+          productName: productName,
+          initialTab: tab,
+        ),
+      ),
     );
-    return [
-      SizedBox(height: 20.h),
-      FindingsListCard(findings: recognised),
-      if (notAssessed.isNotEmpty) ...[
-        SizedBox(height: 16.h),
-        NotAssessedSection(names: notAssessed),
-      ],
-      SizedBox(height: 20.h),
-      SafetyDisclaimer(text: engine.disclaimer),
-    ];
+  }
+}
+
+/// Pinned under the scrolling content so the main action is always visible.
+class _BottomActions extends StatelessWidget {
+  final VoidCallback? onViewAlternatives;
+  final VoidCallback? onAddToRoutine;
+  final bool showRoutine;
+  final AppThemeColors colors;
+
+  const _BottomActions({
+    this.onViewAlternatives,
+    this.onAddToRoutine,
+    required this.showRoutine,
+    required this.colors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      // Top fade: content dissolves into the bar instead of being cut off.
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [colors.background.withValues(alpha: 0), colors.background.withValues(alpha: 0.95)],
+          stops: const [0, 0.35],
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(20.w, 28.h, 20.w, 8.h),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _PrimaryButton(
+            label: 'View Alternatives',
+            onTap: onViewAlternatives,
+            colors: colors,
+          ),
+          if (showRoutine) ...[
+            SizedBox(height: 6.h),
+            _AddToRoutineButton(onTap: onAddToRoutine, colors: colors),
+          ],
+        ],
+      ),
+    );
   }
 }
 
@@ -417,7 +460,9 @@ class _ProductHero extends StatelessWidget {
   Widget build(BuildContext context) {
     // Backend can return an empty name/brand for products it couldn't
     // identify; show a placeholder instead of leaving a gap under the chip.
-    final hasIdentity = (name?.trim().isNotEmpty ?? false) || (brand?.trim().isNotEmpty ?? false);
+    final hasIdentity =
+        (name?.trim().isNotEmpty ?? false) ||
+        (brand?.trim().isNotEmpty ?? false);
     final full = hasIdentity ? (name?.trim() ?? '') : 'Unidentified Product';
     final String line1;
     final String line2;
@@ -456,11 +501,19 @@ class _ProductHero extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.auto_awesome_rounded, color: colors.neonEmerald, size: 13.r),
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      color: colors.neonEmerald,
+                      size: 13.r,
+                    ),
                     SizedBox(width: 6.w),
                     Text(
                       'Analyzed Product',
-                      style: TextStyle(color: Colors.white, fontSize: 11.5.sp, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -469,12 +522,22 @@ class _ProductHero extends StatelessWidget {
               if (line1.isNotEmpty)
                 Text(
                   line1,
-                  style: TextStyle(color: Colors.white, fontSize: 28.sp, fontWeight: FontWeight.w800, height: 1.1),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28.sp,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                  ),
                 ),
               if (line2.isNotEmpty)
                 Text(
                   line2,
-                  style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w600, height: 1.25),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.w600,
+                    height: 1.25,
+                  ),
                 ),
               if (hasQty || category != null) ...[
                 SizedBox(height: 12.h),
@@ -483,30 +546,46 @@ class _ProductHero extends StatelessWidget {
                     if (hasQty)
                       Text(
                         quantity!,
-                        style: TextStyle(color: colors.secondaryText, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: colors.secondaryText,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     if (hasQty && category != null) ...[
                       SizedBox(width: 8.w),
                       Container(
                         width: 4.r,
                         height: 4.r,
-                        decoration: BoxDecoration(color: colors.secondaryText, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: colors.secondaryText,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                       SizedBox(width: 8.w),
                     ],
                     if (category != null)
                       Flexible(
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 4.h,
+                          ),
                           decoration: BoxDecoration(
                             color: colors.neonEmerald.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20.r),
-                            border: Border.all(color: colors.neonEmerald.withValues(alpha: 0.35)),
+                            border: Border.all(
+                              color: colors.neonEmerald.withValues(alpha: 0.35),
+                            ),
                           ),
                           child: Text(
                             category!,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: colors.neonEmerald, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: colors.neonEmerald,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
@@ -572,18 +651,31 @@ class _AssessmentCard extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: EdgeInsets.fromLTRB(gaugeSize / 2 + 16.w, 22.h, 44.w, 22.h),
+                  padding: EdgeInsets.fromLTRB(
+                    gaugeSize / 2 + 16.w,
+                    22.h,
+                    44.w,
+                    22.h,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Overall Assessment',
-                        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       SizedBox(height: 6.h),
                       Text(
                         text,
-                        style: TextStyle(color: colors.secondaryText, fontSize: 12.5.sp, height: 1.4),
+                        style: TextStyle(
+                          color: colors.secondaryText,
+                          fontSize: 12.5.sp,
+                          height: 1.4,
+                        ),
                       ),
                     ],
                   ),
@@ -698,7 +790,12 @@ class _ScoreGauge extends StatelessWidget {
   final AppThemeColors colors;
   final double size;
 
-  const _ScoreGauge({required this.score, required this.band, required this.colors, this.size = 150});
+  const _ScoreGauge({
+    required this.score,
+    required this.band,
+    required this.colors,
+    this.size = 150,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -714,7 +811,9 @@ class _ScoreGauge extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 16)],
+              boxShadow: [
+                BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 16),
+              ],
             ),
           ),
           // Opaque fill only *inside* the stroke, so the card doesn't show
@@ -722,7 +821,10 @@ class _ScoreGauge extends StatelessWidget {
           Container(
             width: diameter - diameter * 0.09 * 2,
             height: diameter - diameter * 0.09 * 2,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: colors.background),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colors.background,
+            ),
           ),
           CustomPaint(
             size: Size(diameter, diameter),
@@ -738,12 +840,22 @@ class _ScoreGauge extends StatelessWidget {
             children: [
               Text(
                 '$score',
-                style: TextStyle(color: Colors.white, fontSize: 34.sp, fontWeight: FontWeight.w800, height: 1.0),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 34.sp,
+                  fontWeight: FontWeight.w800,
+                  height: 1.0,
+                ),
               ),
               SizedBox(height: 2.h),
               Text(
                 band.label,
-                style: TextStyle(color: color, fontSize: 14.sp, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
               ),
               Text(
                 '/ 100',
@@ -786,7 +898,13 @@ class _GaugePainter extends CustomPainter {
 
     canvas.drawCircle(center, radius, base..color = trackColor);
     if (progress > 0) {
-      canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * progress, false, base..color = color);
+      canvas.drawArc(
+        rect,
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        base..color = color,
+      );
     }
   }
 
@@ -813,7 +931,7 @@ class _PrimaryButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(30.r),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: 17.h),
+        padding: EdgeInsets.symmetric(vertical: 13.h),
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: [colors.neonEmerald, darker]),
           borderRadius: BorderRadius.circular(30.r),
@@ -843,43 +961,6 @@ class _PrimaryButton extends StatelessWidget {
               size: 20.r,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OutlinedButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
-  final AppThemeColors colors;
-
-  const _OutlinedButton({
-    required this.label,
-    this.onTap,
-    required this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(30.r),
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: 17.h),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30.r),
-          border: Border.all(color: colors.cardBorder),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 15.5.sp,
-            fontWeight: FontWeight.w700,
-          ),
         ),
       ),
     );

@@ -11,7 +11,8 @@ import 'severity_style.dart';
 /// twice. Each row: severity dot, name, classification flags, evidence badge.
 class FindingsListCard extends StatelessWidget {
   final List<IngredientFinding> findings;
-  const FindingsListCard({super.key, required this.findings});
+  final String? title;
+  const FindingsListCard({super.key, required this.findings, this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +24,7 @@ class FindingsListCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Recognised ingredients (${findings.length})',
+            '${title ?? 'Recognised ingredients'} (${findings.length})',
             style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
           ),
           SizedBox(height: 12.h),

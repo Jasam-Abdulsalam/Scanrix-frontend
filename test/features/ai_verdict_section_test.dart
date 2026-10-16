@@ -73,9 +73,9 @@ void main() {
       await _pump(t, engine: _weak, analyze: _ok(), credits: _credits);
       await t.pump();
       expect(find.text('Not enough data for a full verdict'), findsOneWidget);
-      expect(find.textContaining('Only 1 of 3 ingredients are in our database'), findsOneWidget);
+      expect(find.textContaining('Only 1 of 3 known'), findsOneWidget);
       expect(find.text('Get AI verdict'), findsOneWidget);
-      expect(find.text('Uses 1 AI credit · 4 of 6 left this week'), findsOneWidget);
+      expect(find.textContaining('4 of 6 left'), findsOneWidget);
     });
   });
 
@@ -84,7 +84,7 @@ void main() {
       final analyze = _ok();
       await _pump(t, engine: _weak, analyze: analyze, credits: AiCredits(limit: 6, remaining: 0, resetsAt: DateTime.utc(2026, 10, 19, 12)));
       await t.pump();
-      expect(find.textContaining('No AI credits left. They reset'), findsOneWidget);
+      expect(find.textContaining('resets '), findsOneWidget);
       await t.tap(find.text('Get AI verdict'));
       await t.pump();
       expect(analyze.calls, 0);

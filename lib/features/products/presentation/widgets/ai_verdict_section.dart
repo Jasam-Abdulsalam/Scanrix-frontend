@@ -3,9 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/di/injection_container.dart';
-import '../../../../core/theme/app_theme_colors.dart';
-import '../../../../core/widgets/glass_card.dart';
-import '../../../../core/widgets/primary_button.dart';
 import '../../domain/entities/ai_analysis_entity.dart';
 import '../../domain/entities/safety_engine_entity.dart';
 import '../bloc/ai_analysis_bloc.dart';
@@ -16,6 +13,11 @@ import 'ai_result_card.dart';
 /// Below this share of recognised ingredients our database result is "weak"
 /// and the AI button is offered. Same value as the backend's `SAFE_MIN_COVERAGE`.
 const double kAiCoverageThreshold = 0.7;
+
+/// The AI offer card is a flat, opaque surface (not glass) so it reads as a
+/// different kind of card from the translucent ones. Change the colours here.
+const Color kAiCardSurface = Color(0xFF17232F);
+const Color kAiCardInk = Color(0xFF0F1A24); // text on the white button
 
 /// The opt-in "Get AI verdict" block, placed beside (never replacing) the
 /// database result via `AnalysisResultView.aiSection`.
@@ -76,7 +78,6 @@ class _AiVerdictBody extends StatelessWidget {
         void ask() => context.read<AiAnalysisBloc>().add(AiAnalysisRequested(request));
         return switch (state.status) {
           AiAnalysisStatus.loading => const _InfoCard(
-              icon: Icons.auto_awesome_rounded,
               title: 'Analysing with AI…',
               body: 'This can take up to half a minute.',
               loading: true,
@@ -89,6 +90,7 @@ class _AiVerdictBody extends StatelessWidget {
   }
 }
 
+/// Slim one-row bar (not a card): sparkle, short text, compact button.
 class _OfferCard extends StatelessWidget {
   final SafetyEngine? engine;
   final AiCredits? credits;
@@ -98,43 +100,47 @@ class _OfferCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     final noCredits = credits != null && credits!.remaining <= 0;
     final e = engine;
-    final body = e != null && e.totalCount > 0
-        ? 'Only ${e.recognisedCount} of ${e.totalCount} ingredients are in our database. '
-            'Get an AI estimate for the whole product. It is shown separately and never changes our result.'
-        : 'Get an AI estimate for this product. It is shown separately and never changes our result.';
-    return _InfoCard(
-      icon: Icons.auto_awesome_rounded,
-      title: 'Not enough data for a full verdict',
-      body: body,
-      footer: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final known = e != null && e.totalCount > 0 ? 'Only ${e.recognisedCount} of ${e.totalCount} known' : 'Little data';
+    return Container(
+      padding: EdgeInsets.fromLTRB(16.w, 12.h, 12.w, 12.h),
+      decoration: BoxDecoration(
+        color: kAiCardSurface,
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
         children: [
-          SizedBox(height: 14.h),
-          SizedBox(
-            width: double.infinity,
-            child: PrimaryButton(
-              enabled: !noCredits,
-              onTap: noCredits ? null : onAsk,
-              child: Center(child: Text('Get AI verdict', style: TextStyle(fontSize: 15.sp))),
+          Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 18.r),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Not enough data for a full verdict',
+                  style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  '$known · ${_creditsLine(credits)}',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11.sp),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 8.h),
-          Text(
-            _creditsLine(credits),
-            style: TextStyle(color: colors.secondaryText, fontSize: 11.5.sp),
-          ),
+          SizedBox(width: 10.w),
+          _AiButton(label: 'Get AI verdict', onTap: noCredits ? null : onAsk),
         ],
       ),
     );
   }
 
   static String _creditsLine(AiCredits? c) {
-    if (c == null) return 'Uses 1 AI credit.';
-    if (c.remaining <= 0) return 'No AI credits left. They reset ${formatResetDate(c.resetsAt)}.';
-    return 'Uses 1 AI credit · ${c.remaining} of ${c.limit} left this week';
+    if (c == null) return '1 credit';
+    if (c.remaining <= 0) return 'resets ${formatResetDate(c.resetsAt)}';
+    return '${c.remaining} of ${c.limit} left';
   }
 }
 
@@ -151,7 +157,6 @@ class _FailureCard extends StatelessWidget {
       _ => false,
     };
     return _InfoCard(
-      icon: Icons.info_outline_rounded,
       title: switch (failure.kind) {
         AiFailureKind.ingredientsMissing => 'No ingredient list yet',
         AiFailureKind.creditsExhausted => 'No AI credits left',
@@ -182,19 +187,23 @@ class _FailureCard extends StatelessWidget {
 }
 
 class _InfoCard extends StatelessWidget {
-  final IconData icon;
   final String title;
   final String body;
   final Widget? footer;
   final bool loading;
 
-  const _InfoCard({required this.icon, required this.title, required this.body, this.footer, this.loading = false});
+  const _InfoCard({required this.title, required this.body, this.footer, this.loading = false});
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return GlassCard(
+    return Container(
+      width: double.infinity,
       padding: EdgeInsets.all(18.r),
+      decoration: BoxDecoration(
+        color: kAiCardSurface,
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -202,22 +211,22 @@ class _InfoCard extends StatelessWidget {
             children: [
               loading
                   ? SizedBox(
-                      width: 20.r,
-                      height: 20.r,
-                      child: CircularProgressIndicator(strokeWidth: 2.4, color: colors.neonEmerald),
+                      width: 14.r,
+                      height: 14.r,
+                      child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
                     )
-                  : Icon(icon, color: colors.neonEmerald, size: 20.r),
-              SizedBox(width: 10.w),
+                  : Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 15.r),
+              SizedBox(width: 8.w),
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(color: Colors.white, fontSize: 14.5.sp, fontWeight: FontWeight.w700),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 8.h),
-          Text(body, style: TextStyle(color: colors.secondaryText, fontSize: 12.5.sp, height: 1.4)),
+          SizedBox(height: 6.h),
+          Text(body, style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12.5.sp, height: 1.4)),
           if (footer != null) footer!,
         ],
       ),
@@ -231,4 +240,34 @@ String formatResetDate(DateTime resetsAt) {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   final d = resetsAt.toLocal();
   return '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]}';
+}
+
+/// White pill; dimmed and inert when [onTap] is null.
+class _AiButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  const _AiButton({required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: onTap == null ? 0.45 : 1,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20.r),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20.r),
+            color: Colors.white,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(color: kAiCardInk, fontSize: 12.5.sp, fontWeight: FontWeight.w800),
+          ),
+        ),
+      ),
+    );
+  }
 }
