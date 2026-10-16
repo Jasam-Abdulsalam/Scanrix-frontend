@@ -31,6 +31,7 @@ class ApiConstants {
 
   // history
   static const String history = '/history/';
+  static String historyEntry(String id) => '/history/$id';
 
   /// The backend returns `photo_url` either as an absolute URL (e.g. a
   /// Google profile photo) or, for an uploaded photo, a path relative to

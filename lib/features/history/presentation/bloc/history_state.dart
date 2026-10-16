@@ -16,10 +16,13 @@ class HistoryLoading extends HistoryState {}
 class HistoryLoaded extends HistoryState {
   final List<ScanHistoryEntity> items;
 
-  const HistoryLoaded(this.items);
+  /// One-shot message for the UI (e.g. a delete that failed and was undone).
+  final String? notice;
+
+  const HistoryLoaded(this.items, {this.notice});
 
   @override
-  List<Object?> get props => [items];
+  List<Object?> get props => [items, notice];
 }
 
 class HistoryFailure extends HistoryState {

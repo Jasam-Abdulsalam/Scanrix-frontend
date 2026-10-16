@@ -133,7 +133,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             onTap: () => Navigator.of(
               context,
-            ).push(MaterialPageRoute(builder: (_) => const HistoryPage())),
+            ).push(MaterialPageRoute(builder: (_) => const HistoryPage(standalone: true))),
           ),
         ),
         SizedBox(width: 12.w),
