@@ -39,7 +39,7 @@ extension VerdictDisplay on String {
   };
 
   String get verdictLabel => switch (this) {
-    'safe' => 'Safe',
+    'safe' => 'No Known Concerns',
     'caution' => 'Use With Caution',
     'avoid' => 'Avoid',
     'error' => 'Analysis Failed',

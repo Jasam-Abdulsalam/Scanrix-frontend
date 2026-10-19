@@ -97,7 +97,7 @@ class _Thumb extends StatelessWidget {
 
 /// Short labels so a long one ("Unable To Determine") can't squeeze the product text.
 String _shortLabel(String verdict) => switch (verdict) {
-      'safe' => 'Safe',
+      'safe' => 'No flags',
       'caution' => 'Caution',
       'avoid' => 'Avoid',
       _ => 'Unknown',

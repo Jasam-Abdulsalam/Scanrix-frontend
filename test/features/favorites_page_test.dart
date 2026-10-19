@@ -83,7 +83,7 @@ void main() {
       expect(find.text('Product 1'), findsOneWidget);
       expect(find.text('Product 2'), findsOneWidget);
       expect(find.textContaining('Saved '), findsWidgets);
-      expect(find.text('Safe'), findsNWidgets(2));
+      expect(find.text('No flags'), findsNWidgets(2));
     });
 
     testWidgets('empty state explains how to save one', (t) async {

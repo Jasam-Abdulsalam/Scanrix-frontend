@@ -59,7 +59,7 @@ void main() {
     expect(find.text('Product a'), findsOneWidget);
     expect(find.text('Product b'), findsOneWidget);
     expect(find.text('Avoid'), findsOneWidget);
-    expect(find.text('Safe'), findsOneWidget);
+    expect(find.text('No flags'), findsOneWidget);
     expect(find.text('Clear all'), findsOneWidget);
   });
 
