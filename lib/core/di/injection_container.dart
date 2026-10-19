@@ -17,7 +17,9 @@ import '../../features/favorites/presentation/bloc/favorites_bloc.dart';
 import '../../features/history/domain/usecases/clear_history_usecase.dart';
 import '../../features/history/domain/usecases/delete_history_entry_usecase.dart';
 import '../../features/history/domain/usecases/get_scan_history_usecase.dart';
+import '../../features/history/domain/usecases/get_scan_count_usecase.dart';
 import '../../features/history/presentation/bloc/history_bloc.dart';
+import '../../features/history/presentation/bloc/scan_count_cubit.dart';
 import '../../features/products/domain/usecases/analyze_with_ai_usecase.dart';
 import '../../features/products/domain/usecases/get_ai_credits_usecase.dart';
 import '../../features/products/domain/usecases/get_product_usecase.dart';
@@ -107,6 +109,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetScanHistoryUseCase(apiClient: sl()));
   sl.registerLazySingleton(() => DeleteHistoryEntryUseCase(apiClient: sl()));
   sl.registerLazySingleton(() => ClearHistoryUseCase(apiClient: sl()));
+  sl.registerFactory(() => ScanCountCubit(getScanCountUseCase: sl()));
+  sl.registerLazySingleton(() => GetScanCountUseCase(apiClient: sl()));
 
   // ---------------- Favorites (saved products) ----------------
   sl.registerFactory(

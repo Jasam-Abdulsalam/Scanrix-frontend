@@ -5,6 +5,7 @@ import 'package:scanrix_frontend/features/favorites/presentation/bloc/favorites_
 import 'package:scanrix_frontend/features/favorites/presentation/bloc/favorites_event.dart';
 import 'package:scanrix_frontend/features/favorites/presentation/bloc/favorites_state.dart';
 import 'package:scanrix_frontend/features/favorites/presentation/pages/favorites_page.dart';
+import 'package:scanrix_frontend/features/history/presentation/bloc/scan_count_cubit.dart';
 import 'package:scanrix_frontend/features/history/presentation/pages/history_page.dart';
 import 'package:scanrix_frontend/features/profile/presentation/widgets/overview_card.dart';
 import 'package:scanrix_frontend/features/profile/presentation/widgets/profile_dialogs.dart';
@@ -35,6 +36,7 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     context.read<AuthBloc>().add(const AuthCurrentUserRequested());
     context.read<FavoritesBloc>().add(const FavoritesBarcodesRequested()); // for the Favorites count
+    context.read<ScanCountCubit>().refresh(); // for the Scans count
   }
 
   void _openEditProfile(UserEntity? user) {
@@ -103,6 +105,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (state is AuthUnauthenticated) {
       // Forget this account's saved products so the next one never sees them.
       context.read<FavoritesBloc>().add(const FavoritesReset());
+      context.read<ScanCountCubit>().reset();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginPage()),
         (_) => false,
@@ -129,18 +132,23 @@ class _ProfilePageState extends State<ProfilePage> {
     return Row(
       children: [
         Expanded(
-          child: ProfileOverviewCard(
-            count: '0',
-            title: 'Scans',
-            subtitle: 'Products analyzed',
-            iconWidget: Icon(
-              Icons.crop_free_rounded,
-              color: context.colors.neonEmerald,
-              size: 20.r,
+          child: BlocBuilder<ScanCountCubit, int?>(
+            builder: (context, count) => ProfileOverviewCard(
+              count: count?.toString() ?? '–',
+              title: 'Scans',
+              subtitle: 'Products analyzed',
+              iconWidget: Icon(
+                Icons.crop_free_rounded,
+                color: context.colors.neonEmerald,
+                size: 20.r,
+              ),
+              // History can be edited there: re-read the number when coming back.
+              onTap: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const HistoryPage(standalone: true)))
+                  .then((_) {
+                if (mounted) context.read<ScanCountCubit>().refresh();
+              }),
             ),
-            onTap: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const HistoryPage(standalone: true))),
           ),
         ),
         SizedBox(width: 12.w),

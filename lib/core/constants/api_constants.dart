@@ -31,6 +31,7 @@ class ApiConstants {
 
   // history
   static const String history = '/history/';
+  static const String historyCount = '/history/count';
   static String historyEntry(String id) => '/history/$id';
 
   // favorites (saved products)
