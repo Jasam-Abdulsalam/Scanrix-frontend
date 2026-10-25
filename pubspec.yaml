@@ -99,6 +99,7 @@ flutter:
     - assets/logo.png
     - assets/images/
     - assets/logo/logo.png
+    - assets/logo/symbol.png
     
     - .env
 
