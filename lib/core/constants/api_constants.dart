@@ -25,8 +25,19 @@ class ApiConstants {
   static const String scan = '/scan/';
   static const String analyzeText = '/scan/analyze-text';
 
+  // ai (opt-in "Get AI verdict", see the backend's API_CONTRACT.md section 11)
+  static const String aiAnalyzeProduct = '/ai/analyze-product';
+  static const String aiCredits = '/ai/credits';
+
   // history
   static const String history = '/history/';
+  static const String historyCount = '/history/count';
+  static String historyEntry(String id) => '/history/$id';
+
+  // favorites (saved products)
+  static const String favorites = '/favorites/';
+  static const String favoriteBarcodes = '/favorites/barcodes';
+  static String favorite(String barcode) => '/favorites/${Uri.encodeComponent(barcode)}';
 
   /// The backend returns `photo_url` either as an absolute URL (e.g. a
   /// Google profile photo) or, for an uploaded photo, a path relative to

@@ -468,6 +468,7 @@ class _ScanPageState extends State<ScanPage>
         MaterialPageRoute(
           builder: (_) => IngredientAnalysisResultPage(
             analysis: state.analysis,
+            ingredientsText: state.ingredientsText,
             category: _selectedCategory ?? ScanCategory.food,
           ),
         ),

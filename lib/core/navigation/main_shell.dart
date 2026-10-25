@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../features/favorites/presentation/bloc/favorites_bloc.dart';
+import '../../features/favorites/presentation/bloc/favorites_event.dart';
+import '../../features/history/presentation/bloc/history_bloc.dart';
+import '../../features/history/presentation/bloc/history_event.dart';
+import '../../features/history/presentation/bloc/scan_count_cubit.dart';
+import '../../features/history/presentation/history_paging.dart';
 import '../../features/history/presentation/pages/history_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -94,6 +101,17 @@ class _MainShellState extends State<MainShell> {
                     onTap: (index) {
                       setState(() => _navIndex = index);
                       _navIndexNotifier.value = index;
+                      // The tabs stay alive in the IndexedStack, so the list
+                      // would be stale after a scan: refresh when History is selected.
+                      if (index == 4) {
+                        context.read<ScanCountCubit>().refresh();
+                        context.read<FavoritesBloc>().add(const FavoritesBarcodesRequested());
+                      }
+                      if (index == 1) {
+                        context
+            .read<HistoryBloc>()
+            .add(HistoryRequested(limit: productListPageSize(context), silent: true));
+                      }
                     },
                     onScanPressed: () => handleScanPressed(context),
                   ),

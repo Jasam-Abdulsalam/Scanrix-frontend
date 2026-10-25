@@ -1,5 +1,7 @@
 import '../../domain/entities/product_entity.dart';
+import 'ai_analysis_model.dart';
 import 'ingredient_model.dart';
+import 'safety_engine_model.dart';
 
 class ProductModel extends ProductEntity {
   const ProductModel({
@@ -17,9 +19,13 @@ class ProductModel extends ProductEntity {
     super.imageUrl,
     required super.source,
     required super.createdAt,
+    super.safetyEngine,
+    super.aiAnalysis,
   });
 
-  factory ProductModel.fromJson(Map<String, dynamic> json) {
+  /// [safetyEngine] overrides `json['safety_engine']` - `POST /scan/` returns it
+  /// as a sibling of `product`, so `ScanResultModel` passes it in here.
+  factory ProductModel.fromJson(Map<String, dynamic> json, {SafetyEngineModel? safetyEngine}) {
     return ProductModel(
       id: json['id'] as String,
       barcode: json['barcode'] as String,
@@ -39,6 +45,8 @@ class ProductModel extends ProductEntity {
       imageUrl: json['image_url'] as String?,
       source: json['source'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
+      safetyEngine: safetyEngine ?? SafetyEngineModel.tryParse(json['safety_engine']),
+      aiAnalysis: AiAnalysisModel.tryParse(json['ai_analysis']),
     );
   }
 }

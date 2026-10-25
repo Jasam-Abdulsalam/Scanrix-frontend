@@ -6,7 +6,9 @@ import 'core/di/injection_container.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_cubit.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/favorites/presentation/bloc/favorites_bloc.dart';
 import 'features/history/presentation/bloc/history_bloc.dart';
+import 'features/history/presentation/bloc/scan_count_cubit.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
 import 'features/scan/presentation/bloc/scan_bloc.dart';
 
@@ -31,6 +33,8 @@ class ScanrixApp extends StatelessWidget {
         BlocProvider<ProductBloc>(create: (_) => sl<ProductBloc>()),
         BlocProvider<ScanBloc>(create: (_) => sl<ScanBloc>()),
         BlocProvider<HistoryBloc>(create: (_) => sl<HistoryBloc>()),
+        BlocProvider<ScanCountCubit>(create: (_) => sl<ScanCountCubit>()),
+        BlocProvider<FavoritesBloc>(create: (_) => sl<FavoritesBloc>()),
       ],
       child: ScreenUtilInit(
         designSize: _designSize,

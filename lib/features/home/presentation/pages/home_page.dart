@@ -7,6 +7,7 @@ import '../../../../core/navigation/bottom_nav_navigation.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/quick_action_card.dart';
+import '../../../favorites/presentation/pages/favorites_page.dart';
 
 /// Home tab content — rendered inside `MainShell`'s `IndexedStack`, which
 /// owns the Scaffold/aurora background/`BottomNavBar` shared by all tabs.
@@ -48,12 +49,15 @@ class HomePage extends StatelessWidget {
                         ),
                       ),
                       SizedBox(width: 14.w),
-                      const Expanded(
+                      Expanded(
                         child: QuickActionCard(
                           icon: Icons.favorite_border_rounded,
                           title: 'Saved Products',
                           subtitle: 'Your collection',
                           imageAsset: 'assets/images/product 2.png',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const FavoritesPage()),
+                          ),
                         ),
                       ),
                     ],
