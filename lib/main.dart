@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:scanrix_frontend/core/screens/splash_screen.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'app.dart';
 import 'core/di/injection_container.dart' as di;
 import 'core/error/exceptions.dart';
 import 'core/navigation/main_shell.dart';
 import 'core/network/api_client.dart';
-import 'core/storage/app_flags.dart';
 import 'core/usecase/usecase.dart';
 import 'features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'features/auth/presentation/pages/create_account_page.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+  // Keep the native splash (the logo) on screen until the start page is
+  // known, so there's no blank frame between it and the first page.
+  FlutterNativeSplash.preserve(widgetsBinding: binding);
   await dotenv.load();
   await di.init();
-  // Read before the first frame so the splash never flashes the wrong mode.
-  final playIntro = !await di.sl<AppFlags>().introSeen();
-  runApp(ScanrixApp(home: SplashScreen(playIntro: playIntro)));
+  final home = await _resolveInitialPage();
+  runApp(ScanrixApp(home: home));
+  FlutterNativeSplash.remove();
 }
 
 /// A persisted token alone isn't enough to know where to land: it only
@@ -40,6 +42,7 @@ Future<Widget> _resolveInitialPage() async {
         initialName: user.name,
         photoUrl: user.photoUrl,
         email: user.email,
+        signOutOnBack: true,
       );
     }
     return const MainShell();

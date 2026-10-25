@@ -32,7 +32,6 @@ import '../../features/scan/presentation/bloc/scan_bloc.dart';
 import '../constants/google_auth_config.dart';
 import '../network/api_client.dart';
 import '../network/dio_client.dart';
-import '../storage/app_flags.dart';
 import '../storage/token_storage.dart';
 import '../theme/theme_cubit.dart';
 
@@ -48,7 +47,6 @@ final sl = GetIt.instance;
 Future<void> init() async {
   sl.registerLazySingleton(() => ThemeCubit());
   sl.registerLazySingleton(() => TokenStorage());
-  sl.registerLazySingleton(() => AppFlags());
   sl.registerLazySingleton(() => DioClient(tokenStorage: sl()));
   sl.registerLazySingleton(() => ApiClient(dioClient: sl()));
   // Load any token persisted from a previous session before anything else
