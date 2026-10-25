@@ -7,6 +7,7 @@ import 'core/di/injection_container.dart' as di;
 import 'core/error/exceptions.dart';
 import 'core/navigation/main_shell.dart';
 import 'core/network/api_client.dart';
+import 'core/storage/app_flags.dart';
 import 'core/usecase/usecase.dart';
 import 'features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'features/auth/presentation/pages/create_account_page.dart';
@@ -16,7 +17,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
   await di.init();
-  runApp(ScanrixApp(home: await SplashScreen()));
+  // Read before the first frame so the splash never flashes the wrong mode.
+  final playIntro = !await di.sl<AppFlags>().introSeen();
+  runApp(ScanrixApp(home: SplashScreen(playIntro: playIntro)));
 }
 
 /// A persisted token alone isn't enough to know where to land: it only

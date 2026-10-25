@@ -7,13 +7,19 @@ import 'package:scanrix_frontend/core/di/injection_container.dart' as di;
 import 'package:scanrix_frontend/core/error/exceptions.dart';
 import 'package:scanrix_frontend/core/navigation/main_shell.dart';
 import 'package:scanrix_frontend/core/network/api_client.dart';
+import 'package:scanrix_frontend/core/storage/app_flags.dart';
 import 'package:scanrix_frontend/core/usecase/usecase.dart';
 import 'package:scanrix_frontend/features/auth/domain/usecases/get_current_user_usecase.dart';
 import 'package:scanrix_frontend/features/auth/presentation/pages/create_account_page.dart';
 import 'package:scanrix_frontend/features/auth/presentation/pages/login_page.dart';
 
+/// [playIntro]: the Lottie intro plays only until it has finished once
+/// (`AppFlags.introSeen`). Later launches show the plain background just
+/// while the start page is resolved, then go straight there.
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final bool playIntro;
+
+  const SplashScreen({super.key, this.playIntro = true});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -23,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
 
-  bool animationFinished = false;
+  late bool animationFinished = !widget.playIntro;
   bool initializationFinished = false;
 
   Widget? destination;
@@ -32,8 +38,10 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // Hide status bar + nav bar so the splash truly covers the whole screen.
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Hide status bar + nav bar so the intro truly covers the whole screen.
+    if (widget.playIntro) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
 
     _animationController = AnimationController(vsync: this);
 
@@ -56,6 +64,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _onAnimationFinished() {
     animationFinished = true;
+    // Only once it played to the end: an app killed mid-intro replays it.
+    di.sl<AppFlags>().markIntroSeen().catchError(
+      (Object e) => debugPrint('AppFlags: could not save intro_seen: $e'),
+    );
     _tryNavigate();
   }
 
@@ -117,7 +129,9 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       backgroundColor: const Color(0xFF090D0A),
       extendBodyBehindAppBar: true,
-      body: SizedBox.expand(
+      body: !widget.playIntro
+          ? const SizedBox.expand()
+          : SizedBox.expand(
         child: Stack(
           alignment: Alignment.center,
           children: [
