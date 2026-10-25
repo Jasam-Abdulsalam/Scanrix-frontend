@@ -72,12 +72,14 @@ flutter_native_splash:
   android: true
   ios: true
 
-  color: "#013B3E"
-  image: "assets/logo/app_icon.png"
+  # Same near-black as the Lottie SplashScreen (0xFF090D0A), so the hand-off is seamless.
+  # Images: transparent logo from assets/logo/logo.svg (no baked-in background).
+  color: "#090D0A"
+  image: "assets/logo/splash_logo.png"
 
   android_12:
-    color: "#013B3E"
-    image: "assets/logo/app_icon.png"
+    color: "#090D0A"
+    image: "assets/logo/splash_logo_android12.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
