@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../domain/usecases/delete_account_usecase.dart';
@@ -93,8 +94,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         GoogleSignedIn(:final token) => AuthLoginSuccess(token),
         GoogleSignupRequired(:final signup) => AuthGoogleSignupRequired(signup),
       });
-    } catch (e) {
-      emit(AuthFailure(e.toString()));
+    } on ServerException catch (e) {
+      // Closing the account picker is the user's choice, not a failure.
+      emit(
+        e.code == googleSignInCancelledCode
+            ? AuthInitial()
+            : AuthFailure(e.message),
+      );
+    } on NetworkException catch (e) {
+      emit(AuthFailure(e.message));
+    } catch (_) {
+      emit(AuthFailure('Something went wrong. Please try again.'));
     }
   }
 

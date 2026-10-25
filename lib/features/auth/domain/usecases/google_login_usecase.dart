@@ -22,6 +22,10 @@ import '../entities/google_login_result.dart';
 ///
 /// `GoogleSignIn.instance.initialize(...)` must already have been awaited
 /// once (done in `injection_container.dart::init()`) before this is called.
+/// [ServerException.code] when the user closes the Google account picker.
+/// Not an error: the bloc goes quietly back to idle.
+const googleSignInCancelledCode = 'google_sign_in_cancelled';
+
 class GoogleLoginUseCase implements UseCase<GoogleLoginResult, NoParams> {
   final ApiClient apiClient;
 
@@ -34,7 +38,10 @@ class GoogleLoginUseCase implements UseCase<GoogleLoginResult, NoParams> {
       account = await GoogleSignIn.instance.authenticate();
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
-        throw const ServerException(message: 'Google sign-in cancelled');
+        throw const ServerException(
+          message: 'Google sign-in cancelled',
+          code: googleSignInCancelledCode,
+        );
       }
       throw ServerException(message: e.description ?? 'Google sign-in failed');
     }
