@@ -37,15 +37,24 @@ import '../theme/theme_cubit.dart';
 
 final sl = GetIt.instance;
 
+/// The one dependency `ScanrixApp` needs for its first frame (its theme).
+/// Called from `main()` before `runApp`, so the splash can show straight
+/// away while [init] runs.
+void registerEarly() {
+  if (!sl.isRegistered<ThemeCubit>()) {
+    sl.registerLazySingleton(() => ThemeCubit());
+  }
+}
+
 /// Registers every use case and Bloc with the service locator. Call once
-/// from `main()`, before `runApp`.
+/// at startup (the splash page does this while its animation plays).
 ///
 /// TODO: once the rest of auth/products/scan/history are wired up, inject
 /// `sl<ApiClient>()` into those use cases' constructors too — call through
 /// `ApiClient`, not `DioClient` directly (only `GoogleLoginUseCase` does
 /// this so far — see CLAUDE.md "Google Sign-In").
 Future<void> init() async {
-  sl.registerLazySingleton(() => ThemeCubit());
+  registerEarly();
   sl.registerLazySingleton(() => TokenStorage());
   sl.registerLazySingleton(() => DioClient(tokenStorage: sl()));
   sl.registerLazySingleton(() => ApiClient(dioClient: sl()));
