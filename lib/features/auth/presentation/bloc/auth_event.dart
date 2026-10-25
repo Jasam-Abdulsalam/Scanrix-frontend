@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 
+import '../../domain/entities/google_login_result.dart';
+
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
 
@@ -63,6 +65,33 @@ class AuthProfileCompletionRequested extends AuthEvent {
 
   @override
   List<Object?> get props => [name, photoUrl, photoFile];
+}
+
+/// "Continue" on `CreateAccountPage` in sign-up mode: creates the account
+/// (`POST /auth/google/signup`), then uploads [photoFile] if one was picked.
+class AuthGoogleSignupRequested extends AuthEvent {
+  final PendingGoogleSignup signup;
+  final String name;
+
+  /// Same meaning as on [AuthProfileCompletionRequested].
+  final String? photoUrl;
+  final File? photoFile;
+
+  const AuthGoogleSignupRequested({
+    required this.signup,
+    required this.name,
+    this.photoUrl,
+    this.photoFile,
+  });
+
+  @override
+  List<Object?> get props => [signup, name, photoUrl, photoFile];
+}
+
+/// Back from `CreateAccountPage` in sign-up mode: forget the Google account
+/// so the next "Continue with Google" shows the account picker again.
+class AuthGoogleSignupCancelled extends AuthEvent {
+  const AuthGoogleSignupCancelled();
 }
 
 class AuthCurrentUserRequested extends AuthEvent {

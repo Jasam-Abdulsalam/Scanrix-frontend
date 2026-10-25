@@ -94,6 +94,7 @@ class _StartupPageState extends State<StartupPage> {
           initialName: user.name,
           photoUrl: user.photoUrl,
           email: user.email,
+          signOutOnBack: true,
         );
       }
 

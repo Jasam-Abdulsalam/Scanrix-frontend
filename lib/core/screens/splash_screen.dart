@@ -96,6 +96,7 @@ class _SplashScreenState extends State<SplashScreen>
           initialName: user.name,
           photoUrl: user.photoUrl,
           email: user.email,
+          signOutOnBack: true,
         );
       }
 

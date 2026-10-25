@@ -29,8 +29,24 @@ class LoginPage extends StatelessWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: BlocConsumer<AuthBloc, AuthState>(
+          // Stay quiet while CreateAccountPage (pushed on top) is showing,
+          // so its failures and success aren't handled twice.
+          listenWhen: (_, _) => ModalRoute.of(context)?.isCurrent ?? true,
           listener: (context, state) {
-            if (state is AuthFailure) {
+            if (state is AuthGoogleSignupRequired) {
+              // Pushed, not replaced: Back returns here to pick another
+              // Google account. Nothing exists on the server yet.
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => CreateAccountPage(
+                    initialName: state.signup.displayName,
+                    photoUrl: state.signup.photoUrl,
+                    email: state.signup.email,
+                    pendingSignup: state.signup,
+                  ),
+                ),
+              );
+            } else if (state is AuthFailure) {
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(SnackBar(content: Text(state.message)));
@@ -46,6 +62,8 @@ class LoginPage extends StatelessWidget {
                       initialName: state.token.displayName,
                       photoUrl: state.token.photoUrl,
                       email: state.token.email,
+                      // Replaced, so nothing is below it: Back logs out.
+                      signOutOnBack: true,
                     ),
                   ),
                 );

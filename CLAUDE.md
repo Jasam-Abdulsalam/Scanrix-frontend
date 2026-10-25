@@ -159,7 +159,7 @@ phone-sized reference can look off.
 
 | Feature    | Backend route                                  | Notes |
 |------------|-------------------------------------------------|-------|
-| `auth`     | `POST /auth/register`, `POST /auth/login`, `POST /auth/google` | `AuthTokenEntity` mirrors the `Token` schema. `/auth/google` is the only auth path actually wired to the network so far — see "Google Sign-In" below. |
+| `auth`     | `POST /auth/register`, `POST /auth/login`, `POST /auth/google`, `POST /auth/google/signup` | `AuthTokenEntity` mirrors the `Token` schema. `/auth/google` is the only auth path actually wired to the network so far — see "Google Sign-In" below. |
 | `products` | `GET /products/{barcode}`                       | `ProductEntity.isAnalyzing` is true when `verdict == "analyzing"` — the backend runs AI analysis as a background task, so the product page is expected to **poll** this endpoint until the verdict flips (see backend's scan flow docs). Polling isn't implemented yet. |
 | `scan`     | `POST /scan/`, `POST /scan/analyze-text`        | `analyze-text` is the OCR path — synchronous, nothing persisted server-side. Database-first safety engine: top-level `{verdict, overall_score, summary, unknown_ingredients, safety_engine}` (no `analysis` wrapper, no per-ingredient list). `POST /scan/` adds an optional `safety_engine` sibling of `product`; `ScanResultModel` attaches it to `ProductEntity.safetyEngine`. `SafetyEngine`/`IngredientFinding` live in `products/domain/entities/safety_engine_entity.dart`; `AnalysisResultView` renders findings, a "Not assessed" section (unmatched ingredients are never green) and the disclaimer, and falls back to verdict/score/summary + legacy list when `safetyEngine` is null. |
 | `ai` (inside `products/`) | `POST /ai/analyze-product`, `GET /ai/credits`; `GET /products/{barcode}` may carry a cached `ai_analysis` | Opt-in "Get AI verdict", shown by `AiVerdictSection` (the `aiSection` slot of `AnalysisResultView`) **beside, never replacing,** the database result, only when the result is weak (`verdict == 'unknown'` or `coverage < 0.7`). Always labelled "AI estimate · unverified"; the wording is never "Safe". `AiAnalysisBloc` (one per result screen) uses `droppable()` from `bloc_concurrency`, so a double tap cannot make two paid calls. 6 credits per user per week, shared with future AI features. Structured errors: `ServerException.code` (`ingredients_missing` 422, `ai_credits_exhausted` 429, `ai_unavailable` 503 = not charged). See the backend's API_CONTRACT.md section 11. |
@@ -172,9 +172,21 @@ The only auth path that's actually networked end-to-end so far. Flow:
 `login_page.dart`'s "Continue with Google" button dispatches `AuthGoogleLoginRequested` →
 `AuthBloc` calls `GoogleLoginUseCase` → that runs the native Google Sign-In flow
 (`google_sign_in` v7's `GoogleSignIn.instance.authenticate()`) to get a Google ID token,
-POSTs it to the backend's `POST /auth/google`, and returns the same `AuthTokenEntity`
-shape `LoginUseCase` would — the backend issues its own JWT either way, so the Bloc emits
-the existing `AuthLoginSuccess`/`AuthFailure` states, no new state types needed.
+POSTs it to the backend's `POST /auth/google` with `create_if_missing: false`, and returns
+a `GoogleLoginResult` (`domain/entities/google_login_result.dart`):
+- `GoogleSignedIn(token)`: the account exists → `AuthLoginSuccess` (the backend issues its own JWT).
+- `GoogleSignupRequired(PendingGoogleSignup)`: backend 404 `account_not_found`, **nothing was
+  created** → `AuthGoogleSignupRequired`. `LoginPage` **pushes** (not replaces) `CreateAccountPage`
+  in sign-up mode (`pendingSignup` set). Continue → `AuthGoogleSignupRequested` →
+  `GoogleSignupUseCase` (`POST /auth/google/signup`, stores the token) → photo upload if one was
+  picked → `AuthProfileCompleteSuccess` → `MainShell` with the stack cleared. Back (button or
+  system gesture, via `PopScope`) → `AuthGoogleSignupCancelled`: Google sign-out + token cleared,
+  so a wrongly picked email never becomes an account and the next tap shows the account picker.
+  `LoginPage`'s listener only runs while it is the top route (`listenWhen`), so the pushed page's
+  states aren't handled twice. The Google ID token expires after ~1 hour: sign-up then fails
+  with 401 and the user goes back and signs in again.
+`CreateAccountPage` without `pendingSignup` is still the old completion step (`PATCH /auth/me`)
+for accounts created by older app versions, and the Profile tab's "Edit profile".
 
 This required standing up `DioClient`/`ApiClient` for real (both were `TODO` placeholders)
 and registering them in `injection_container.dart`, but **only for `GoogleLoginUseCase`**
