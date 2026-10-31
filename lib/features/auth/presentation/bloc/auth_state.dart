@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../domain/entities/auth_token_entity.dart';
+import '../../domain/entities/google_login_result.dart';
 import '../../domain/entities/user_entity.dart';
 
 abstract class AuthState extends Equatable {
@@ -21,6 +22,17 @@ class AuthLoginSuccess extends AuthState {
 
   @override
   List<Object?> get props => [token];
+}
+
+/// Google sign-in found no account for that email and created none:
+/// `LoginPage` opens `CreateAccountPage` in sign-up mode with [signup].
+class AuthGoogleSignupRequired extends AuthState {
+  final PendingGoogleSignup signup;
+
+  const AuthGoogleSignupRequired(this.signup);
+
+  @override
+  List<Object?> get props => [signup];
 }
 
 class AuthRegisterSuccess extends AuthState {

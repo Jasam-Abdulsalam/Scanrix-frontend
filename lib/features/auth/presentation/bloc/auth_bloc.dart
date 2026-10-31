@@ -1,11 +1,14 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../domain/usecases/delete_account_usecase.dart';
+import '../../domain/entities/google_login_result.dart';
 import '../../domain/usecases/get_current_user_usecase.dart';
 import '../../domain/usecases/google_login_usecase.dart';
+import '../../domain/usecases/google_signup_usecase.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/update_profile_usecase.dart';
@@ -17,6 +20,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
   final RegisterUseCase registerUseCase;
   final GoogleLoginUseCase googleLoginUseCase;
+  final GoogleSignupUseCase googleSignupUseCase;
   final UpdateProfileUseCase updateProfileUseCase;
   final UploadProfilePhotoUseCase uploadProfilePhotoUseCase;
   final GetCurrentUserUseCase getCurrentUserUseCase;
@@ -27,6 +31,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.loginUseCase,
     required this.registerUseCase,
     required this.googleLoginUseCase,
+    required this.googleSignupUseCase,
     required this.updateProfileUseCase,
     required this.uploadProfilePhotoUseCase,
     required this.getCurrentUserUseCase,
@@ -38,6 +43,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthGoogleLoginRequested>(_onGoogleLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthProfileCompletionRequested>(_onProfileCompletionRequested);
+    on<AuthGoogleSignupRequested>(_onGoogleSignupRequested);
+    on<AuthGoogleSignupCancelled>(_onGoogleSignupCancelled);
     on<AuthCurrentUserRequested>(_onCurrentUserRequested);
     on<AuthDeleteAccountRequested>(_onDeleteAccountRequested);
   }
@@ -82,10 +89,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final token = await googleLoginUseCase(const NoParams());
-      emit(AuthLoginSuccess(token));
-    } catch (e) {
-      emit(AuthFailure(e.toString()));
+      final result = await googleLoginUseCase(const NoParams());
+      emit(switch (result) {
+        GoogleSignedIn(:final token) => AuthLoginSuccess(token),
+        GoogleSignupRequired(:final signup) => AuthGoogleSignupRequired(signup),
+      });
+    } on ServerException catch (e) {
+      // Closing the account picker is the user's choice, not a failure.
+      emit(
+        e.code == googleSignInCancelledCode
+            ? AuthInitial()
+            : AuthFailure(e.message),
+      );
+    } on NetworkException catch (e) {
+      emit(AuthFailure(e.message));
+    } catch (_) {
+      emit(AuthFailure('Something went wrong. Please try again.'));
     }
   }
 
@@ -127,6 +146,43 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       emit(AuthFailure(e.toString()));
     }
+  }
+
+  Future<void> _onGoogleSignupRequested(
+    AuthGoogleSignupRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      await googleSignupUseCase(
+        GoogleSignupParams(
+          idToken: event.signup.idToken,
+          name: event.name,
+          photoUrl: event.photoFile == null ? event.photoUrl : null,
+        ),
+      );
+      // A picked photo can only be uploaded once the account (and token)
+      // exists. If this fails the account is still there: "Continue" again
+      // just logs it in (sign-up is idempotent) and retries the upload.
+      if (event.photoFile != null) {
+        await uploadProfilePhotoUseCase(
+          UploadProfilePhotoParams(file: event.photoFile!),
+        );
+      }
+      final user = await getCurrentUserUseCase(const NoParams());
+      emit(AuthProfileCompleteSuccess(user));
+    } catch (e) {
+      emit(AuthFailure(e.toString()));
+    }
+  }
+
+  Future<void> _onGoogleSignupCancelled(
+    AuthGoogleSignupCancelled event,
+    Emitter<AuthState> emit,
+  ) async {
+    // Also clears a token in case sign-up succeeded but a later step failed.
+    await _clearLocalSession();
+    emit(AuthUnauthenticated());
   }
 
   Future<void> _onCurrentUserRequested(

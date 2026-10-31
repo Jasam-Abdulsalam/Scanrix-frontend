@@ -5,7 +5,7 @@ import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../data/models/auth_token_model.dart';
-import '../entities/auth_token_entity.dart';
+import '../entities/google_login_result.dart';
 
 /// POST /auth/google (`app/api/v1/endpoints/auth.py` on the backend).
 ///
@@ -14,21 +14,34 @@ import '../entities/auth_token_entity.dart';
 /// shape as [LoginUseCase] (it issues its own token either way, Google is
 /// just an alternate way to prove identity).
 ///
+/// Sends `create_if_missing: false`, so a Google account with no Scanrix
+/// account yet is NOT created here: the backend answers 404
+/// `account_not_found` and this returns [GoogleSignupRequired]. The account is
+/// created later by `GoogleSignupUseCase`, only once the user confirms their
+/// profile — picking the wrong Google account and going back creates nothing.
+///
 /// `GoogleSignIn.instance.initialize(...)` must already have been awaited
 /// once (done in `injection_container.dart::init()`) before this is called.
-class GoogleLoginUseCase implements UseCase<AuthTokenEntity, NoParams> {
+/// [ServerException.code] when the user closes the Google account picker.
+/// Not an error: the bloc goes quietly back to idle.
+const googleSignInCancelledCode = 'google_sign_in_cancelled';
+
+class GoogleLoginUseCase implements UseCase<GoogleLoginResult, NoParams> {
   final ApiClient apiClient;
 
   GoogleLoginUseCase({required this.apiClient});
 
   @override
-  Future<AuthTokenEntity> call(NoParams params) async {
+  Future<GoogleLoginResult> call(NoParams params) async {
     final GoogleSignInAccount account;
     try {
       account = await GoogleSignIn.instance.authenticate();
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
-        throw const ServerException(message: 'Google sign-in cancelled');
+        throw const ServerException(
+          message: 'Google sign-in cancelled',
+          code: googleSignInCancelledCode,
+        );
       }
       throw ServerException(message: e.description ?? 'Google sign-in failed');
     }
@@ -40,10 +53,23 @@ class GoogleLoginUseCase implements UseCase<AuthTokenEntity, NoParams> {
       );
     }
 
-    final data = await apiClient.post(
-      ApiConstants.googleLogin,
-      data: {'id_token': idToken},
-    );
+    final Object? data;
+    try {
+      data = await apiClient.post(
+        ApiConstants.googleLogin,
+        data: {'id_token': idToken, 'create_if_missing': false},
+      );
+    } on ServerException catch (e) {
+      if (e.code != 'account_not_found') rethrow;
+      return GoogleSignupRequired(
+        PendingGoogleSignup(
+          idToken: idToken,
+          email: account.email,
+          displayName: account.displayName,
+          photoUrl: account.photoUrl,
+        ),
+      );
+    }
     // displayName/photoUrl/email aren't part of the backend's Token
     // response — they come straight from the Google account so a
     // post-login screen (e.g. CreateAccountPage) can prefill without
@@ -55,6 +81,6 @@ class GoogleLoginUseCase implements UseCase<AuthTokenEntity, NoParams> {
           email: account.email,
         );
     await apiClient.setToken(token.accessToken);
-    return token;
+    return GoogleSignedIn(token);
   }
 }

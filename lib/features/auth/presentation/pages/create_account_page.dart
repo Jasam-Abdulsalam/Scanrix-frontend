@@ -15,6 +15,8 @@ import '../../../../core/widgets/primary_button.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+import 'login_page.dart';
+import '../../domain/entities/google_login_result.dart';
 
 /// Reached either right after a new Google sign-in (see `LoginPage`'s
 /// `AuthLoginSuccess` handling) or, on a later app launch, from the
@@ -28,16 +30,30 @@ import '../bloc/auth_state.dart';
 /// reached this screen (the Google account on first sign-in, or
 /// `GET /auth/me` on a later launch) — name stays editable, it's the only
 /// mandatory field. Submitting calls `PATCH /auth/me` via `AuthBloc`.
+///
+/// Sign-up mode ([pendingSignup] set, pushed by `LoginPage` for a Google
+/// account with no Scanrix account yet): nothing exists on the server and
+/// the user is not logged in. Continue creates the account
+/// (`POST /auth/google/signup`); Back (button or system gesture) signs out of
+/// Google and returns to `LoginPage`, so a wrongly picked email creates nothing.
+///
+/// [signOutOnBack]: an existing account whose profile was never completed
+/// (created by an older app version), shown with nothing below it to go back
+/// to. Back logs out and returns to `LoginPage` so another account can be picked.
 class CreateAccountPage extends StatefulWidget {
   final String? initialName;
   final String? photoUrl;
   final String? email;
+  final PendingGoogleSignup? pendingSignup;
+  final bool signOutOnBack;
 
   const CreateAccountPage({
     super.key,
     this.initialName,
     this.photoUrl,
     this.email,
+    this.pendingSignup,
+    this.signOutOnBack = false,
   });
 
   @override
@@ -52,6 +68,10 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   String? _photoUrl;
   File? _pickedPhoto;
   bool _agreedToTerms = false;
+
+  /// Set once sign-up succeeded, so leaving this route afterwards isn't
+  /// treated as "Back = cancel sign-up".
+  bool _signedUp = false;
 
   @override
   void initState() {
@@ -132,6 +152,18 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       return;
     }
     if (!_formKey.currentState!.validate()) return;
+    final signup = widget.pendingSignup;
+    if (signup != null) {
+      context.read<AuthBloc>().add(
+        AuthGoogleSignupRequested(
+          signup: signup,
+          name: _nameController.text.trim(),
+          photoFile: _pickedPhoto,
+          photoUrl: _pickedPhoto == null ? _photoUrl : null,
+        ),
+      );
+      return;
+    }
     context.read<AuthBloc>().add(
       AuthProfileCompletionRequested(
         name: _nameController.text.trim(),
@@ -157,15 +189,46 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(SnackBar(content: Text(state.message)));
-            } else if (state is AuthProfileCompleteSuccess) {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const MainShell()),
+            } else if (state is AuthUnauthenticated && widget.signOutOnBack) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (_) => false,
               );
+            } else if (state is AuthProfileCompleteSuccess) {
+              final route = MaterialPageRoute(
+                builder: (_) => const MainShell(),
+              );
+              if (widget.pendingSignup != null) {
+                // LoginPage is still below this page: clear it too.
+                _signedUp = true;
+                Navigator.of(context).pushAndRemoveUntil(route, (_) => false);
+              } else {
+                Navigator.of(context).pushReplacement(route);
+              }
             }
           },
           builder: (context, state) {
             final isSubmitting = state is AuthLoading;
-            return _buildBody(context, isSubmitting);
+            final isSignup = widget.pendingSignup != null;
+            return PopScope(
+              // While the account is being created, leaving could strand a
+              // half-finished sign-up: wait for it to finish. With
+              // signOutOnBack there is no route below, so Back is handled
+              // here (logout) instead of popping.
+              canPop: !widget.signOutOnBack && !(isSignup && isSubmitting),
+              onPopInvokedWithResult: (didPop, _) {
+                if (didPop) {
+                  if (isSignup && !_signedUp) {
+                    context.read<AuthBloc>().add(
+                      const AuthGoogleSignupCancelled(),
+                    );
+                  }
+                } else if (widget.signOutOnBack && !isSubmitting) {
+                  context.read<AuthBloc>().add(const AuthLogoutRequested());
+                }
+              },
+              child: _buildBody(context, isSubmitting),
+            );
           },
         ),
       ),

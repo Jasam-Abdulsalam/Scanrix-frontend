@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../features/auth/domain/usecases/delete_account_usecase.dart';
 import '../../features/auth/domain/usecases/get_current_user_usecase.dart';
 import '../../features/auth/domain/usecases/google_login_usecase.dart';
+import '../../features/auth/domain/usecases/google_signup_usecase.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/domain/usecases/update_profile_usecase.dart';
@@ -36,15 +37,24 @@ import '../theme/theme_cubit.dart';
 
 final sl = GetIt.instance;
 
+/// The one dependency `ScanrixApp` needs for its first frame (its theme).
+/// Called from `main()` before `runApp`, so the splash can show straight
+/// away while [init] runs.
+void registerEarly() {
+  if (!sl.isRegistered<ThemeCubit>()) {
+    sl.registerLazySingleton(() => ThemeCubit());
+  }
+}
+
 /// Registers every use case and Bloc with the service locator. Call once
-/// from `main()`, before `runApp`.
+/// at startup (the splash page does this while its animation plays).
 ///
 /// TODO: once the rest of auth/products/scan/history are wired up, inject
 /// `sl<ApiClient>()` into those use cases' constructors too — call through
 /// `ApiClient`, not `DioClient` directly (only `GoogleLoginUseCase` does
 /// this so far — see CLAUDE.md "Google Sign-In").
 Future<void> init() async {
-  sl.registerLazySingleton(() => ThemeCubit());
+  registerEarly();
   sl.registerLazySingleton(() => TokenStorage());
   sl.registerLazySingleton(() => DioClient(tokenStorage: sl()));
   sl.registerLazySingleton(() => ApiClient(dioClient: sl()));
@@ -64,6 +74,7 @@ Future<void> init() async {
       loginUseCase: sl(),
       registerUseCase: sl(),
       googleLoginUseCase: sl(),
+      googleSignupUseCase: sl(),
       updateProfileUseCase: sl(),
       uploadProfilePhotoUseCase: sl(),
       getCurrentUserUseCase: sl(),
@@ -74,6 +85,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => LoginUseCase());
   sl.registerLazySingleton(() => RegisterUseCase());
   sl.registerLazySingleton(() => GoogleLoginUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => GoogleSignupUseCase(apiClient: sl()));
   sl.registerLazySingleton(() => GetCurrentUserUseCase(apiClient: sl()));
   sl.registerLazySingleton(() => UpdateProfileUseCase(apiClient: sl()));
   sl.registerLazySingleton(() => UploadProfilePhotoUseCase(apiClient: sl()));

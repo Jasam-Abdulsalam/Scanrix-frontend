@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#0C1D14</color>
+    <!-- Window colour behind Flutter until its first frame: same as the splash. -->
+    <color name="splash_background">#142628</color>
+</resources>

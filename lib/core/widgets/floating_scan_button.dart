@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../theme/app_colors.dart';
 import '../theme/app_theme_colors.dart';
 
 /// Central floating scan CTA that sits above [BottomNavBar] — solid
