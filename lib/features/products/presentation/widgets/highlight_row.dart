@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/bold_card.dart';
 
 class RowDivider extends StatelessWidget {
   final AppThemeColors colors;
@@ -9,13 +10,13 @@ class RowDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Divider(color: colors.divider, height: 1);
+    // Starts after the leading icon tile, like an iOS grouped list.
+    return Divider(color: Colors.white.withValues(alpha: 0.07), height: 1, thickness: 1, indent: 52.w);
   }
 }
 
-/// One row inside the highlights card: leading icon in a tinted circle,
-/// title + subtitle, trailing chevron. Tap is a no-op placeholder for now —
-/// wire `onTap` up if each row should push to a detail page.
+/// One row inside the highlights card: solid icon tile, title + subtitle,
+/// trailing chevron when it opens something. Shrinks slightly on press.
 class HighlightRow extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -35,20 +36,14 @@ class HighlightRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Pressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12.r),
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 14.h),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 42.r,
-              height: 42.r,
-              decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.15), shape: BoxShape.circle),
-              child: Icon(icon, color: iconColor, size: 20.r),
-            ),
+            IconTile(icon: icon, color: iconColor),
             SizedBox(width: 14.w),
             Expanded(
               child: Column(
@@ -66,11 +61,13 @@ class HighlightRow extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(width: 8.w),
-            Padding(
-              padding: EdgeInsets.only(top: 4.h),
-              child: Icon(Icons.chevron_right_rounded, color: colors.secondaryText.withValues(alpha: 0.6), size: 22.r),
-            ),
+            if (onTap != null) ...[
+              SizedBox(width: 8.w),
+              Padding(
+                padding: EdgeInsets.only(top: 6.h),
+                child: Icon(Icons.chevron_right_rounded, color: colors.secondaryText, size: 22.r),
+              ),
+            ],
           ],
         ),
       ),

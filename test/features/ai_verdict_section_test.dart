@@ -10,12 +10,25 @@ import 'package:scanrix_frontend/features/products/domain/entities/ai_analysis_e
 import 'package:scanrix_frontend/features/products/domain/entities/safety_engine_entity.dart';
 import 'package:scanrix_frontend/features/products/presentation/bloc/ai_analysis_bloc.dart';
 import 'package:scanrix_frontend/features/products/presentation/widgets/ai_verdict_section.dart';
+import 'package:scanrix_frontend/features/products/presentation/widgets/ai_verdict_style.dart';
 
 import 'ai_analysis_test_support.dart';
 
 const _weak = SafetyEngine(coverage: 0.33, recognisedCount: 1, totalCount: 3);
 const _strong = SafetyEngine(coverage: 0.9, recognisedCount: 9, totalCount: 10);
 const _request = AiAnalysisRequest.barcode('8901');
+
+/// Advances real frames (pumpAndSettle would never return: the thinking orb loops).
+Future<void> _frames(WidgetTester t, {int ms = 1000}) async {
+  for (var i = 0; i < ms ~/ 50; i++) {
+    await t.pump(const Duration(milliseconds: 50));
+  }
+}
+
+Future<void> _back(WidgetTester t) async {
+  t.state<NavigatorState>(find.byType(Navigator)).pop();
+  await _frames(t);
+}
 
 Future<void> _pump(
   WidgetTester t, {
@@ -92,38 +105,80 @@ void main() {
   });
 
   group('asking for the verdict', () {
-    testWidgets('tap: loading, then an unverified AI card that never says "Safe"', (t) async {
+    testWidgets('tap: opens the AI screen, thinking, then an unverified result that never says "Safe"', (t) async {
       final completer = Completer<AiAnalysis>();
       final analyze = FakeAnalyzeWithAi((_) => completer.future);
       await _pump(t, engine: _weak, analyze: analyze, credits: _credits);
 
       await t.tap(find.text('Get AI verdict'));
       await t.pump();
-      expect(find.text('Analysing with AI…'), findsOneWidget);
-      expect(find.text('Get AI verdict'), findsNothing, reason: 'button is gone while loading: no double charge');
+      await _frames(t, ms: 500);
+      expect(find.text('AI verdict'), findsOneWidget, reason: 'the full-screen page is open');
+      expect(find.text('Reading the ingredient list…'), findsOneWidget);
 
       completer.complete(const AiAnalysis(
         verdict: AiVerdict.good,
         score: 80,
         summary: 'Mostly simple ingredients.',
-        concerns: [AiConcern(ingredient: 'Parfum', effect: 'may cause skin irritation')],
+        concerns: [
+          AiConcern(ingredient: 'parfum', effect: 'may cause skin irritation'),
+          AiConcern(ingredient: 'perfuwe', effect: 'unknown'),
+          AiConcern(ingredient: '2319', effect: 'Unknown'),
+        ],
         positives: ['Short list'],
         adjustedByDatabase: true,
         disclaimer: 'AI-generated estimate. Not medical advice.',
       ));
       await t.pump();
-      await t.pump();
+      await _frames(t, ms: 2000);
 
       expect(analyze.calls, 1);
       expect(find.text('AI estimate · unverified'), findsOneWidget);
       expect(find.text('Low concern'), findsOneWidget);
-      expect(find.text('80/100'), findsOneWidget);
+      expect(find.text('80'), findsOneWidget);
       expect(find.text('Mostly simple ingredients.'), findsOneWidget);
-      expect(find.textContaining('Parfum'), findsOneWidget);
-      expect(find.text('Lowered to match a hazard in our database.'), findsOneWidget);
+      expect(find.text('Parfum'), findsOneWidget);
+      expect(find.text('May cause skin irritation'), findsOneWidget);
+      expect(find.textContaining('lowered this verdict'), findsOneWidget);
       expect(find.text('AI-generated estimate. Not medical advice.'), findsOneWidget);
       expect(find.textContaining('Safe'), findsNothing);
       expect(find.textContaining('safe'), findsNothing);
+
+      // Unidentified names are not concerns: they sit behind the Unclear tile, in a sheet.
+      expect(find.text('Biggest concern'), findsOneWidget);
+      expect(find.text('perfuwe'), findsNothing);
+      await t.tap(find.text('Unclear'));
+      await _frames(t, ms: 600);
+      expect(find.text("2 ingredients couldn't be identified"), findsOneWidget);
+      expect(find.text('perfuwe'), findsOneWidget);
+      await _back(t); // close the sheet
+      expect(find.text('perfuwe'), findsNothing);
+
+      // Back on the product page the answer is one compact row.
+      await _back(t);
+      expect(find.text('AI verdict'), findsNothing);
+      expect(find.text('Low concern'), findsOneWidget);
+      expect(find.text('AI estimate · unverified'), findsOneWidget);
+    });
+
+    testWidgets('going back mid-request keeps it running; the row reopens the screen', (t) async {
+      final completer = Completer<AiAnalysis>();
+      final analyze = FakeAnalyzeWithAi((_) => completer.future);
+      await _pump(t, engine: _weak, analyze: analyze, credits: _credits);
+
+      await t.tap(find.text('Get AI verdict'));
+      await _frames(t, ms: 500);
+      await _back(t);
+      expect(find.text('Analysing with AI…'), findsOneWidget);
+
+      await t.tap(find.text('Analysing with AI…'));
+      await _frames(t, ms: 500);
+      expect(find.text('AI verdict'), findsOneWidget);
+      completer.complete(sampleAnalysis);
+      await t.pump();
+      await _frames(t, ms: 2000);
+      expect(find.text('Use with caution'), findsOneWidget);
+      expect(analyze.calls, 1, reason: 'reopening never sends a second paid request');
     });
 
     testWidgets('a cached analysis that came with the product is shown without asking', (t) async {
@@ -141,7 +196,7 @@ void main() {
       await t.pump();
       await t.tap(find.text('Get AI verdict'));
       await t.pump();
-      await t.pump();
+      await t.pump(const Duration(seconds: 1));
     }
 
     testWidgets('no ingredient list: tells the user to scan the label, no retry button', (t) async {

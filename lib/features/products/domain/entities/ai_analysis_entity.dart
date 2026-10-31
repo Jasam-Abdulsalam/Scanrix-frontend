@@ -34,6 +34,13 @@ class AiConcern extends Equatable {
 
   const AiConcern({required this.ingredient, required this.effect});
 
+  /// True when the AI could not say anything about this ingredient (effect
+  /// "unknown", empty...). These are usually OCR misreads, not real concerns.
+  bool get isUnidentified {
+    final e = effect.trim().toLowerCase();
+    return e.isEmpty || e.startsWith('unknown') || e == 'not known' || e == 'unclear' || e == 'n/a';
+  }
+
   @override
   List<Object?> get props => [ingredient, effect];
 }
@@ -74,6 +81,13 @@ class AiAnalysis extends Equatable {
     this.generatedAt,
     this.disclaimer = '',
   });
+
+  /// Concerns the AI actually explained.
+  List<AiConcern> get identifiedConcerns => concerns.where((c) => !c.isUnidentified).toList();
+
+  /// Ingredient names the AI could not identify (shown collapsed, not as concerns).
+  List<String> get unidentifiedIngredients =>
+      concerns.where((c) => c.isUnidentified).map((c) => c.ingredient).toList();
 
   @override
   List<Object?> get props => [

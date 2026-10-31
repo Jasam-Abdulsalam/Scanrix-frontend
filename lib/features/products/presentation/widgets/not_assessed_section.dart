@@ -11,16 +11,6 @@ class NotAssessedSection extends StatelessWidget {
   final List<String> names;
   const NotAssessedSection({super.key, required this.names});
 
-  /// Merges finding names and `unknown_ingredients`, dropping case-insensitive
-  /// duplicates while keeping label order.
-  static List<String> merge(Iterable<String> a, Iterable<String> b) {
-    final seen = <String>{};
-    return [
-      for (final n in [...a, ...b])
-        if (n.trim().isNotEmpty && seen.add(n.trim().toLowerCase())) n.trim(),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     if (names.isEmpty) return const SizedBox.shrink();

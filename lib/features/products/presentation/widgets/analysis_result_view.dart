@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
-import '../../../../core/widgets/glass_card.dart';
+import '../../../../core/widgets/bold_card.dart';
+import '../../../../core/widgets/toast.dart';
 import '../../domain/entities/ingredient_entity.dart';
 import '../../domain/entities/safety_engine_entity.dart';
 import '../pages/ingredients_breakdown_page.dart';
@@ -19,9 +21,9 @@ import 'status_colors.dart';
 /// (`IngredientAnalysisResultPage`) so both flows render identically once
 /// they have a verdict. Kept as a plain string extension (no BuildContext)
 /// since it's used in places without one; `kWarnAmber`/`kDangerRed` below are the
-/// same semantic shades used inside this file for FAIR/POOR and watch-out
-/// states, so the two stay visually consistent even though this extension
-/// can't pull `neonEmerald` from the current theme.
+/// same semantic shades used inside this file for watch-out states, so the
+/// two stay visually consistent even though this extension can't pull
+/// `neonEmerald` from the current theme.
 extension VerdictDisplay on String {
   Color get verdictColor => switch (this) {
     'safe' => const Color(0xFF25E28B),
@@ -47,40 +49,25 @@ extension VerdictDisplay on String {
   };
 }
 
-/// Score → the short badge word shown inside the gauge ("GOOD" / "FAIR" /
-/// "POOR") and its color. Takes the current `AppThemeColors` so "GOOD"
-/// always matches the theme's actual emerald (`neonEmerald`), not a
-/// hardcoded shade — this is what makes the gauge repaint correctly if the
-/// user switches between `darkGreen` and `blackishReference`.
-typedef _ScoreBand = ({Color color, String label});
-
-_ScoreBand _bandFor(int score, AppThemeColors colors) {
-  if (score >= 70) return (color: colors.neonEmerald, label: 'GOOD');
-  if (score >= 40) return (color: kWarnAmber, label: 'FAIR');
-  return (color: kDangerRed, label: 'POOR');
-}
-
-/// Full analysis screen: app bar (back / favorite), product hero, circular
-/// score gauge, one-line summary, up to three highlight rows (safety fit,
-/// good ingredients, watch-outs), and the primary actions.
+/// Full analysis screen in the bold-card language (.claude/skills/bold-card-ui):
+/// top bar, a dark product card (only when there is a product), the accent
+/// verdict card with the score ring, the summary, the Watch out / Good /
+/// Not assessed columns, the optional AI row, the disclaimer, and the pinned
+/// actions.
 ///
-/// With a [safetyEngine] the highlight rows and the detail sections below
-/// the buttons (recognised list, "Not assessed", disclaimer) are built from
-/// its findings. Without one - an older cached barcode result - the legacy
-/// per-ingredient rows and [IngredientsPage] are used. [unknownIngredients] is
-/// the OCR response's top-level list of names the database couldn't match.
+/// With a [safetyEngine] the columns open the ingredient breakdown screen.
+/// Without one - an older cached barcode result - the legacy per-ingredient
+/// rows and [IngredientsPage] are used.
 /// [aiSection] is the optional opt-in "AI verdict" block, shown beside (never
 /// replacing) the database result.
 ///
-/// [productName] and [productImageUrl] are optional — the hero still
-/// renders without them (placeholder icon, no name line) so this also
-/// works for flows without a resolved product identity.
-class AnalysisResultView extends StatelessWidget {
+/// A label scan (no [productName], [brand] or [productImageUrl]) has no
+/// product card: the verdict card says "Label scan" instead.
+class AnalysisResultView extends StatefulWidget {
   final String verdict;
   final int? overallScore;
   final String? summary;
   final SafetyEngine? safetyEngine;
-  final List<String> unknownIngredients;
   final Widget? aiSection;
   final List<IngredientEntity> ingredients;
   final String? productName;
@@ -101,7 +88,6 @@ class AnalysisResultView extends StatelessWidget {
     required this.overallScore,
     required this.summary,
     this.safetyEngine,
-    this.unknownIngredients = const [],
     this.aiSection,
     this.ingredients = const [],
     this.productName,
@@ -118,196 +104,117 @@ class AnalysisResultView extends StatelessWidget {
   });
 
   @override
+  State<AnalysisResultView> createState() => _AnalysisResultViewState();
+}
+
+class _AnalysisResultViewState extends State<AnalysisResultView> with SingleTickerProviderStateMixin {
+  /// Drives the staggered entrance, the score ring fill and the count-up.
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _c.value = 1;
+    } else if (_c.value == 0) {
+      _c.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  bool get _hasProduct =>
+      (widget.productName?.trim().isNotEmpty ?? false) ||
+      (widget.brand?.trim().isNotEmpty ?? false) ||
+      (widget.productImageUrl?.trim().isNotEmpty ?? false);
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final concerning = ingredients.where((i) => i.concerns.isNotEmpty).toList();
-    final isCosmetic = _isCosmetic(category);
-    // Fall back to a verdict-derived score so the gauge always has something
+    final w = widget;
+    final isCosmetic = _isCosmetic(w.category);
+    // Fall back to a verdict-derived score so the ring always has something
     // to draw, even before a numeric score is wired up end-to-end.
     final score =
-        overallScore ??
-        switch (verdict) {
+        w.overallScore ??
+        switch (w.verdict) {
           'safe' => 85,
           'caution' => 55,
           'avoid' => 20,
           _ => 50,
         };
-    final band = _bandFor(score, colors);
+    final summary = w.summary?.trim() ?? '';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.background,
-        gradient: RadialGradient(
-          center: const Alignment(0.9, -0.9),
-          radius: 1.3,
-          colors: colors.headerGradient,
-          stops: const [0.0, 0.5, 1.0],
+    final sections = <Widget>[
+      if (_hasProduct)
+        _ProductCard(
+          imageUrl: w.productImageUrl,
+          name: w.productName,
+          brand: w.brand,
+          quantity: w.quantity,
+          category: w.category,
         ),
+      _VerdictCard(
+        verdict: w.verdict,
+        score: score,
+        engine: w.safetyEngine,
+        label: _hasProduct ? 'Database result' : (w.category == null ? 'Label scan' : 'Label scan · ${w.category}'),
+        progress: _c,
       ),
-      child: Stack(
-        children: [
-          // Decorative leaf, top-right, behind the content.
-          Positioned(
-            top: 0,
-            right: 0,
-            width: 230.w,
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: 0.4,
-                child: Image.asset(
-                  'assets/images/plant.png',
-                  fit: BoxFit.contain,
-                ),
+      if (summary.isNotEmpty) _SummaryCard(text: summary),
+      if (w.safetyEngine != null)
+        AnalysisHighlightsCard(
+          safetyEngine: w.safetyEngine,
+          legacyIngredients: w.ingredients,
+          progress: _c,
+          onOpenTab: (tab) => _openBreakdown(context, tab),
+        )
+      else
+        _LegacyRows(ingredients: w.ingredients, isCosmetic: isCosmetic, productName: w.productName, skinType: w.skinType),
+      if (w.aiSection != null) w.aiSection!,
+      if (w.safetyEngine != null) SafetyDisclaimer(text: w.safetyEngine!.disclaimer),
+    ];
+
+    return ColoredBox(
+      color: colors.background,
+      child: SafeArea(
+        // Stack (not Column) so content scrolls *under* the faded action bar.
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 110.h),
+                children: [
+                  _TopBar(
+                    title: _hasProduct ? null : 'Label scan',
+                    onBack: w.onBack,
+                    onFavorite: w.onFavorite,
+                    isFavorite: w.isFavorite,
+                  ),
+                  SizedBox(height: 16.h),
+                  for (var i = 0; i < sections.length; i++) ...[
+                    if (i > 0) SizedBox(height: 12.h),
+                    _Reveal(controller: _c, index: i, child: sections[i]),
+                  ],
+                ],
               ),
             ),
-          ),
-          SafeArea(
-            // Stack (not Column) so content scrolls *under* the faded action bar.
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: ListView(
-                    padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 130.h),
-                    children: [
-                      _TopBar(
-                        onBack: onBack,
-                        onFavorite: onFavorite,
-                        isFavorite: isFavorite,
-                        colors: colors,
-                      ),
-                      SizedBox(height: 16.h),
-                      // Always rendered — with graceful fallbacks for a missing image
-                      // or name — so this section is never silently skipped.
-                      _ProductHero(
-                        imageUrl: productImageUrl,
-                        name: productName,
-                        brand: brand,
-                        quantity: quantity,
-                        category: category,
-                        colors: colors,
-                      ),
-                      SizedBox(height: 24.h),
-                      _AssessmentCard(
-                        score: score,
-                        band: band,
-                        summary: summary,
-                        colors: colors,
-                      ),
-                      SizedBox(height: 20.h),
-                      if (safetyEngine != null)
-                        AnalysisHighlightsCard(
-                          safetyEngine: safetyEngine,
-                          legacyIngredients: ingredients,
-                          unknownIngredients: unknownIngredients,
-                    onOpenTab: (tab) => _openBreakdown(context, tab),
-                        )
-                      else
-                        GlassCard(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16.w,
-                            vertical: 6.h,
-                          ),
-                          child: Column(
-                            children: [
-                              // Skin fit only makes sense for cosmetics, and its text
-                              // is derived from the analysed ingredients (no canned claims).
-                              if (isCosmetic) ...[
-                                HighlightRow(
-                                  icon: Icons.eco_rounded,
-                                  iconColor: concerning.isEmpty
-                                      ? colors.neonEmerald
-                                      : kWarnAmber,
-                                  title: 'Skin compatibility',
-                                  subtitle: concerning.isEmpty
-                                      ? 'No concerns found for $skinType.'
-                                      : '${concerning.length} ingredient${concerning.length == 1 ? '' : 's'} flagged for $skinType.',
-                                  colors: colors,
-                                  onTap: concerning.isEmpty
-                                      ? null
-                                      : () => Navigator.of(context).push(
-                                          MaterialPageRoute<void>(
-                                            builder: (_) => IngredientsPage(
-                                              ingredients: ingredients,
-                                              productName: productName,
-                                              skinType: skinType,
-                                              initialFlaggedOnly: true,
-                                            ),
-                                          ),
-                                        ),
-                                ),
-                                RowDivider(colors: colors),
-                              ],
-                              if (ingredients.isNotEmpty)
-                                HighlightRow(
-                                  icon: Icons.science_rounded,
-                                  iconColor: colors.neonEmerald,
-                                  title: 'Ingredients',
-                                  subtitle:
-                                      '${ingredients.length} ingredient${ingredients.length == 1 ? '' : 's'}'
-                                      '${concerning.isEmpty ? '' : ' · ${concerning.length} flagged'}. Tap to view all.',
-                                  colors: colors,
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => IngredientsPage(
-                                        ingredients: ingredients,
-                                        productName: productName,
-                                        skinType: skinType,
-                                        initialFlaggedOnly: false,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              if (concerning.isNotEmpty) ...[
-                                if (ingredients.isNotEmpty)
-                                  RowDivider(colors: colors),
-                                HighlightRow(
-                                  icon: Icons.warning_rounded,
-                                  iconColor: kWarnAmber,
-                                  title: 'Watch out',
-                                  subtitle:
-                                      'Contains ${concerning.first.name}${concerning.first.concerns.isNotEmpty ? ' which may ${concerning.first.concerns.first}' : ''}.',
-                                  colors: colors,
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => IngredientsPage(
-                                        ingredients: ingredients,
-                                        productName: productName,
-                                        skinType: skinType,
-                                        initialFlaggedOnly: true,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      if (aiSection != null) ...[
-                        SizedBox(height: 16.h),
-                        aiSection!,
-                      ],
-                      if (safetyEngine != null) ...[
-                        SizedBox(height: 16.h),
-                        SafetyDisclaimer(text: safetyEngine!.disclaimer),
-                      ],
-                    ],
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: _BottomActions(
-                    onViewAlternatives: onViewAlternatives,
-                    onAddToRoutine: isCosmetic ? onAddToRoutine : null,
-                    showRoutine: isCosmetic,
-                    colors: colors,
-                  ),
-                ),
-              ],
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _BottomActions(
+                onViewAlternatives: w.onViewAlternatives,
+                onAddToRoutine: isCosmetic ? w.onAddToRoutine : null,
+                showRoutine: isCosmetic,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -316,9 +223,8 @@ class AnalysisResultView extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => IngredientsBreakdownPage(
-          engine: safetyEngine!,
-          unknownIngredients: unknownIngredients,
-          productName: productName,
+          engine: widget.safetyEngine!,
+          productName: widget.productName,
           initialTab: tab,
         ),
       ),
@@ -326,22 +232,48 @@ class AnalysisResultView extends StatelessWidget {
   }
 }
 
+/// Staggered entrance: each section fades in and rises 12 px, a beat after
+/// the previous one. Critically damped (ease-out, no overshoot).
+class _Reveal extends StatelessWidget {
+  final AnimationController controller;
+  final int index;
+  final Widget child;
+
+  const _Reveal({required this.controller, required this.index, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final start = math.min(index * 0.07, 0.5);
+    final anim = CurvedAnimation(parent: controller, curve: Interval(start, start + 0.5, curve: Curves.easeOutCubic));
+    return AnimatedBuilder(
+      animation: anim,
+      builder: (_, child) => Opacity(
+        opacity: anim.value,
+        child: Transform.translate(offset: Offset(0, 12.h * (1 - anim.value)), child: child),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Until a feature is built (no callback passed), its button still answers
+/// a tap instead of doing nothing.
+void _comingSoon(BuildContext context, String feature) {
+  HapticFeedback.selectionClick();
+  showToast(context, '$feature is coming soon', icon: Icons.schedule_rounded);
+}
+
 /// Pinned under the scrolling content so the main action is always visible.
 class _BottomActions extends StatelessWidget {
   final VoidCallback? onViewAlternatives;
   final VoidCallback? onAddToRoutine;
   final bool showRoutine;
-  final AppThemeColors colors;
 
-  const _BottomActions({
-    this.onViewAlternatives,
-    this.onAddToRoutine,
-    required this.showRoutine,
-    required this.colors,
-  });
+  const _BottomActions({this.onViewAlternatives, this.onAddToRoutine, required this.showRoutine});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       // Top fade: content dissolves into the bar instead of being cut off.
       decoration: BoxDecoration(
@@ -352,55 +284,70 @@ class _BottomActions extends StatelessWidget {
           stops: const [0, 0.35],
         ),
       ),
-      padding: EdgeInsets.fromLTRB(20.w, 28.h, 20.w, 8.h),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _PrimaryButton(
-            label: 'View Alternatives',
-            onTap: onViewAlternatives,
-            colors: colors,
-          ),
-          if (showRoutine) ...[
-            SizedBox(height: 6.h),
-            _AddToRoutineButton(onTap: onAddToRoutine, colors: colors),
-          ],
-        ],
+      padding: EdgeInsets.fromLTRB(16.w, 28.h, 16.w, 8.h),
+      // Two equal pills side by side; if a label wouldn't fit in its half
+      // (very large text), they stack instead, so no label is ever cut off.
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final alternatives = _ActionPill(
+            label: 'Alternatives',
+            semanticLabel: 'View alternatives',
+            icon: Icons.arrow_forward_rounded,
+            iconAfter: true,
+            filled: true,
+            onTap: onViewAlternatives ?? () => _comingSoon(context, 'Alternatives'),
+          );
+          if (!showRoutine) return alternatives;
+          final routine = _ActionPill(
+            label: 'Add to routine',
+            semanticLabel: 'Add to My Routine',
+            icon: Icons.add_rounded,
+            filled: false,
+            onTap: onAddToRoutine ?? () => _comingSoon(context, 'My Routine'),
+          );
+          final gap = 10.w;
+          final half = (box.maxWidth - gap) / 2;
+          final fits = routine.naturalWidth(context) <= half && alternatives.naturalWidth(context) <= half;
+          return fits
+              ? Row(children: [Expanded(child: routine), SizedBox(width: gap), Expanded(child: alternatives)])
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [alternatives, SizedBox(height: 8.h), routine],
+                );
+        },
       ),
     );
   }
 }
 
 class _TopBar extends StatelessWidget {
+  final String? title;
   final VoidCallback? onBack;
   final VoidCallback? onFavorite;
   final bool isFavorite;
-  final AppThemeColors colors;
 
-  const _TopBar({
-    this.onBack,
-    this.onFavorite,
-    this.isFavorite = false,
-    required this.colors,
-  });
+  const _TopBar({this.title, this.onBack, this.onFavorite, this.isFavorite = false});
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _CircleIconButton(
-          icon: Icons.arrow_back_ios_new_rounded,
-          onTap: onBack,
+        _RoundButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
+        Expanded(
+          child: title == null
+              ? const SizedBox.shrink()
+              : Text(
+                  title!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                ),
         ),
         // No handler = nothing to save (e.g. a label scan with no product): no heart.
         if (onFavorite != null)
-          _CircleIconButton(
-            icon: isFavorite
-                ? Icons.favorite_rounded
-                : Icons.favorite_border_rounded,
+          _RoundButton(
+            icon: isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
             onTap: onFavorite,
-            color: isFavorite ? colors.neonEmerald : Colors.white,
+            color: isFavorite ? boldAccent(context) : Colors.white,
           )
         else
           SizedBox(width: 42.r),
@@ -409,73 +356,52 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _CircleIconButton extends StatelessWidget {
+class _RoundButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
   final Color color;
 
-  const _CircleIconButton({
-    required this.icon,
-    this.onTap,
-    this.color = Colors.white,
-  });
+  const _RoundButton({required this.icon, this.onTap, this.color = Colors.white});
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Container(
-        width: 42.r,
-        height: 42.r,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: colors.iconContainerBg,
-          border: Border.all(color: colors.cardBorder),
-        ),
-        child: Icon(icon, color: color, size: 18.r),
-      ),
+    return Pressable(
+      onTap: onTap == null
+          ? null
+          : () {
+              HapticFeedback.selectionClick();
+              onTap!();
+            },
+      child: CircleIcon(icon: icon, background: boldCardFill(context.colors), foreground: color, size: 42.r),
     );
   }
 }
 
-/// Product image on the left; "Analyzed Product" chip, brand (bold) over
-/// product name (lighter), then "quantity • category chip" on the right.
-/// When [brand] isn't given, the first word of [name] is used as the brand.
-class _ProductHero extends StatelessWidget {
+/// Dark product card: rounded photo on the left; brand (bold), product name,
+/// then "quantity · category pill". When [brand] isn't given, the first word
+/// of [name] is used as the brand.
+class _ProductCard extends StatelessWidget {
   final String? imageUrl;
   final String? name;
   final String? brand;
   final String? quantity;
   final String? category;
-  final AppThemeColors colors;
 
-  const _ProductHero({
-    this.imageUrl,
-    this.name,
-    this.brand,
-    this.quantity,
-    this.category,
-    required this.colors,
-  });
+  const _ProductCard({this.imageUrl, this.name, this.brand, this.quantity, this.category});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     // Backend can return an empty name/brand for products it couldn't
-    // identify; show a placeholder instead of leaving a gap under the chip.
-    final hasIdentity =
-        (name?.trim().isNotEmpty ?? false) ||
-        (brand?.trim().isNotEmpty ?? false);
+    // identify; show a placeholder instead of leaving a gap.
+    final hasIdentity = (name?.trim().isNotEmpty ?? false) || (brand?.trim().isNotEmpty ?? false);
     final full = hasIdentity ? (name?.trim() ?? '') : 'Unidentified Product';
     final String line1;
     final String line2;
     if (brand != null && brand!.trim().isNotEmpty) {
       line1 = brand!.trim();
       // Avoid "Himalaya / Himalaya Neem Face Wash".
-      line2 = full.toLowerCase().startsWith(line1.toLowerCase())
-          ? full.substring(line1.length).trim()
-          : full;
+      line2 = full.toLowerCase().startsWith(line1.toLowerCase()) ? full.substring(line1.length).trim() : full;
     } else {
       final split = full.indexOf(' ');
       line1 = split == -1 ? full : full.substring(0, split);
@@ -483,532 +409,401 @@ class _ProductHero extends StatelessWidget {
     }
     final hasQty = quantity != null && quantity!.trim().isNotEmpty;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 150.w,
-          height: 190.h,
-          child: _ProductImage(imageUrl: imageUrl, colors: colors),
-        ),
-        SizedBox(width: 18.w),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-                decoration: BoxDecoration(
-                  color: colors.neonEmerald.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20.r),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.auto_awesome_rounded,
-                      color: colors.neonEmerald,
-                      size: 13.r,
+    return BoldCard(
+      padding: EdgeInsets.all(12.r),
+      child: Row(
+        children: [
+          _ProductImage(imageUrl: imageUrl, size: 92.r),
+          SizedBox(width: 14.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (line1.isNotEmpty)
+                  Text(
+                    line1,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                      height: 1.1,
                     ),
-                    SizedBox(width: 6.w),
-                    Text(
-                      'Analyzed Product',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11.5.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 16.h),
-              if (line1.isNotEmpty)
-                Text(
-                  line1,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28.sp,
-                    fontWeight: FontWeight.w800,
-                    height: 1.1,
                   ),
-                ),
-              if (line2.isNotEmpty)
-                Text(
-                  line2,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.w600,
-                    height: 1.25,
+                if (line2.isNotEmpty) ...[
+                  SizedBox(height: 2.h),
+                  Text(
+                    line2,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14.sp, height: 1.3),
                   ),
-                ),
-              if (hasQty || category != null) ...[
-                SizedBox(height: 12.h),
-                Row(
-                  children: [
-                    if (hasQty)
-                      Text(
-                        quantity!,
-                        style: TextStyle(
-                          color: colors.secondaryText,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    if (hasQty && category != null) ...[
-                      SizedBox(width: 8.w),
-                      Container(
-                        width: 4.r,
-                        height: 4.r,
-                        decoration: BoxDecoration(
-                          color: colors.secondaryText,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
+                ],
+                if (hasQty || category != null) ...[
+                  SizedBox(height: 8.h),
+                  Wrap(
+                    spacing: 6.w,
+                    runSpacing: 6.h,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (hasQty) _Pill(text: quantity!.trim(), color: colors.secondaryText),
+                      if (category != null) _Pill(text: category!, color: Colors.white),
                     ],
-                    if (category != null)
-                      Flexible(
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 4.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colors.neonEmerald.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(20.r),
-                            border: Border.all(
-                              color: colors.neonEmerald.withValues(alpha: 0.35),
-                            ),
-                          ),
-                          child: Text(
-                            category!,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: colors.neonEmerald,
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-/// Wide glass card: score ring on the left, "Overall Assessment" text in the
-/// middle, decorative leaf tile on the right.
-class _AssessmentCard extends StatelessWidget {
-  final int score;
-  final _ScoreBand band;
-  final String? summary;
-  final AppThemeColors colors;
+class _Pill extends StatelessWidget {
+  final String text;
+  final Color color;
 
-  const _AssessmentCard({
+  const _Pill({required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(20.r)),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: color, fontSize: 12.sp, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// Rounded product photo. These are often real phone snapshots, so
+/// `BoxFit.cover` fills the frame (no letterboxing), and loading/error get
+/// the same calm placeholder as a missing image.
+class _ProductImage extends StatelessWidget {
+  final String? imageUrl;
+  final double size;
+
+  const _ProductImage({required this.imageUrl, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final placeholder = Icon(Icons.inventory_2_outlined, color: colors.secondaryText, size: size * 0.36);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18.r),
+      child: Container(
+        width: size,
+        height: size,
+        color: Colors.white.withValues(alpha: 0.06),
+        alignment: Alignment.center,
+        child: imageUrl == null
+            ? placeholder
+            : Image.network(
+                imageUrl!,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : SizedBox.square(
+                        dimension: 20.r,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: boldAccent(context)),
+                      ),
+                errorBuilder: (_, _, _) => placeholder,
+              ),
+      ),
+    );
+  }
+}
+
+/// The one solid accent card: what it is (pill), the verdict in words and as
+/// a status badge, how much of the label could be checked, and the score.
+/// Status color only ever sits on black (badge, pill dot), never on the accent.
+class _VerdictCard extends StatelessWidget {
+  final String verdict;
+  final int score;
+  final SafetyEngine? engine;
+  final String label;
+  final Animation<double> progress;
+
+  const _VerdictCard({
+    required this.verdict,
     required this.score,
-    required this.band,
-    required this.summary,
-    required this.colors,
+    required this.engine,
+    required this.label,
+    required this.progress,
   });
 
   @override
   Widget build(BuildContext context) {
-    final text = (summary != null && summary!.trim().isNotEmpty)
-        ? summary!
-        : 'Based on available ingredient data.';
-    final gaugeSize = 130.r;
-    // The glass card sits behind the ring: it starts at the ring's centre
-    // line (left padding = half the ring) so the ring overlaps its left edge.
-    return Stack(
-      alignment: Alignment.centerLeft,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(left: gaugeSize / 2),
-          child: GlassCard(
-            padding: EdgeInsets.zero,
-            // The leaf is a Positioned backdrop (not a Row child), so it takes
-            // no layout space: the card's height comes only from the text,
-            // and long text can't be squeezed or stretch the card because of
-            // the icon. GlassCard clips it to the rounded card shape.
-            child: Stack(
+    final colors = context.colors;
+    final status = verdict == 'safe' ? colors.neonEmerald : verdict.verdictColor;
+    final fill = CurvedAnimation(parent: progress, curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic));
+    // Rounded notch in the top edge, like the stacked cards in the references.
+    return ClipPath(
+      clipper: TopNotchClipper(radius: 28.r, notchWidth: 56.w, notchDepth: 7.h),
+      child: Container(
+        padding: EdgeInsets.fromLTRB(20.w, 16.h, 16.w, 20.h),
+        decoration: BoxDecoration(color: boldAccent(context), borderRadius: BorderRadius.circular(28.r)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Positioned(
-                  top: 16.h,
-                  bottom: 16.h,
-                  right: 8.w,
-                  width: 70.w,
-                  child: Opacity(
-                    opacity: 0.5,
-                    child: Image.asset(
-                      'assets/images/glowing leaf.png',
-                      fit: BoxFit.contain,
-                      alignment: Alignment.centerRight,
+                // Flexible: large text sizes shrink the pill instead of overflowing the row.
+                Flexible(
+                  child: Container(
+                    padding: EdgeInsets.fromLTRB(9.w, 5.h, 11.w, 5.h),
+                    decoration: BoxDecoration(color: kOnAccent, borderRadius: BorderRadius.circular(20.r)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7.r,
+                          height: 7.r,
+                          decoration: BoxDecoration(color: status, shape: BoxShape.circle),
+                        ),
+                        SizedBox(width: 6.w),
+                        Flexible(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    gaugeSize / 2 + 16.w,
-                    22.h,
-                    44.w,
-                    22.h,
-                  ),
+                SizedBox(width: 12.w),
+                CircleIcon(icon: verdict.verdictIcon, background: kOnAccent, foreground: status, size: 38.r),
+              ],
+            ),
+            SizedBox(height: 14.h),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Overall Assessment',
+                        verdict.verdictLabel,
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w700,
+                          color: kOnAccent,
+                          fontSize: 26.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.8,
+                          height: 1.05,
                         ),
                       ),
-                      SizedBox(height: 6.h),
+                      SizedBox(height: 8.h),
                       Text(
-                        text,
-                        style: TextStyle(
-                          color: colors.secondaryText,
-                          fontSize: 12.5.sp,
-                          height: 1.4,
-                        ),
+                        _coverageLine(engine),
+                        style: TextStyle(color: kOnAccent.withValues(alpha: 0.72), fontSize: 13.sp, height: 1.4),
                       ),
                     ],
                   ),
+                ),
+                SizedBox(width: 14.w),
+                AnimatedBuilder(
+                  animation: fill,
+                  builder: (_, _) => AccentRing(size: 92.r, score: score, fraction: fill.value),
                 ),
               ],
-            ),
-          ),
-        ),
-        _ScoreGauge(score: score, band: band, colors: colors, size: 130),
-      ],
-    );
-  }
-}
-
-/// Frames a product photo with a border, soft shadow, and a bottom
-/// vignette — needed because these are often real phone snapshots (a hand
-/// holding a pack on a tiled floor), not clean studio product shots, so a
-/// plain unstyled `Image.network` looks like a stray screenshot rather than
-/// an intentional part of the card. `BoxFit.cover` fills the frame (no
-/// letterboxing bars), and loading/error states get the same placeholder
-/// treatment as a missing image instead of Flutter's default spinner/red box.
-class _ProductImage extends StatelessWidget {
-  final String? imageUrl;
-  final AppThemeColors colors;
-
-  const _ProductImage({required this.imageUrl, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(20.r);
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        border: Border.all(color: colors.cardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: radius,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(color: colors.iconContainerBg),
-            if (imageUrl != null)
-              Image.network(
-                imageUrl!,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return Center(
-                    child: SizedBox(
-                      width: 22.r,
-                      height: 22.r,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: colors.neonEmerald,
-                      ),
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.inventory_2_outlined,
-                  color: colors.secondaryText,
-                  size: 40.r,
-                ),
-              )
-            else
-              Icon(
-                Icons.inventory_2_outlined,
-                color: colors.secondaryText,
-                size: 40.r,
-              ),
-            // Soft fade at the bottom so a busy real-world photo (floor,
-            // hand, background clutter) settles into the card instead of
-            // ending on a hard edge.
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 48.h,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.35),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  /// How much of the label the database could check: the caveat that
+  /// matters most on a weak result, so it lives in the hero, not in fine print.
+  static String _coverageLine(SafetyEngine? e) {
+    if (e == null || e.totalCount == 0) return 'Based on available ingredient data.';
+    final checked = '${e.recognisedCount} of ${e.totalCount} ingredients';
+    return e.coverage < 0.7 ? 'Only $checked could be checked.' : '$checked checked.';
+  }
 }
 
-/// Circular progress ring with the numeric score and its band label
-/// ("GOOD"/"FAIR"/"POOR") centered inside — the glowing ring from the
-/// reference screenshot.
-class _ScoreGauge extends StatelessWidget {
-  final int score;
-  final _ScoreBand band;
-  final AppThemeColors colors;
-  final double size;
+class _SummaryCard extends StatelessWidget {
+  final String text;
 
-  const _ScoreGauge({
-    required this.score,
-    required this.band,
-    required this.colors,
-    this.size = 150,
-  });
+  const _SummaryCard({required this.text});
 
   @override
   Widget build(BuildContext context) {
-    final color = band.color;
-    final diameter = size.r;
-    return SizedBox(
-      width: diameter,
-      height: diameter,
-      child: Stack(
-        alignment: Alignment.center,
+    return BoldCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Very subtle glow around the ring.
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 16),
-              ],
-            ),
+          Text(
+            'Overall assessment',
+            style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700, letterSpacing: -0.2),
           ),
-          // Opaque fill only *inside* the stroke, so the card doesn't show
-          // through the ring and nothing dark rims its outer edge.
-          Container(
-            width: diameter - diameter * 0.09 * 2,
-            height: diameter - diameter * 0.09 * 2,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: colors.background,
-            ),
-          ),
-          CustomPaint(
-            size: Size(diameter, diameter),
-            painter: _GaugePainter(
-              progress: score.clamp(0, 100) / 100,
-              color: color,
-              trackColor: Colors.white.withValues(alpha: 0.08),
-              strokeWidth: diameter * 0.09,
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$score',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 34.sp,
-                  fontWeight: FontWeight.w800,
-                  height: 1.0,
-                ),
-              ),
-              SizedBox(height: 2.h),
-              Text(
-                band.label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                '/ 100',
-                style: TextStyle(color: colors.secondaryText, fontSize: 11.sp),
-              ),
-            ],
-          ),
+          SizedBox(height: 8.h),
+          Text(text, style: TextStyle(color: Colors.white.withValues(alpha: 0.86), fontSize: 14.5.sp, height: 1.5)),
         ],
       ),
     );
   }
 }
 
-/// Ring starting at 12 o'clock, sweeping clockwise by `progress` of a full
-/// turn, with round caps. Solid color (no sweep shader) so the arc's color
-/// can't drift out of sync with its start angle.
-class _GaugePainter extends CustomPainter {
-  final double progress; // 0..1
-  final Color color;
-  final Color trackColor;
-  final double strokeWidth;
+/// Older cached barcode results (no safety engine): per-ingredient rows in
+/// one dark card, each opening [IngredientsPage].
+class _LegacyRows extends StatelessWidget {
+  final List<IngredientEntity> ingredients;
+  final bool isCosmetic;
+  final String? productName;
+  final String skinType;
 
-  _GaugePainter({
-    required this.progress,
-    required this.color,
-    required this.trackColor,
-    required this.strokeWidth,
+  const _LegacyRows({
+    required this.ingredients,
+    required this.isCosmetic,
+    required this.productName,
+    required this.skinType,
   });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = (size.width - strokeWidth) / 2 - 2;
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    final base = Paint()
-      ..isAntiAlias = true
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, radius, base..color = trackColor);
-    if (progress > 0) {
-      canvas.drawArc(
-        rect,
-        -math.pi / 2,
-        2 * math.pi * progress,
-        false,
-        base..color = color,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _GaugePainter old) =>
-      old.progress != progress ||
-      old.color != color ||
-      old.trackColor != trackColor ||
-      old.strokeWidth != strokeWidth;
-}
-
-class _PrimaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
-  final AppThemeColors colors;
-
-  const _PrimaryButton({required this.label, this.onTap, required this.colors});
-
-  @override
   Widget build(BuildContext context) {
-    final darker = Color.lerp(colors.neonEmerald, Colors.black, 0.25)!;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(30.r),
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: 13.h),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [colors.neonEmerald, darker]),
-          borderRadius: BorderRadius.circular(30.r),
-          boxShadow: [
-            BoxShadow(
-              color: colors.neonEmerald.withValues(alpha: 0.35),
-              blurRadius: 20,
-              offset: Offset(0, 8.h),
-            ),
-          ],
+    final colors = context.colors;
+    final concerning = ingredients.where((i) => i.concerns.isNotEmpty).toList();
+    void open({required bool flaggedOnly}) => Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => IngredientsPage(
+          ingredients: ingredients,
+          productName: productName,
+          skinType: skinType,
+          initialFlaggedOnly: flaggedOnly,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: colors.background,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            SizedBox(width: 6.w),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: colors.background,
-              size: 20.r,
-            ),
-          ],
+      ),
+    );
+    final rows = <Widget>[
+      // Skin fit only makes sense for cosmetics, and its text is derived
+      // from the analysed ingredients (no canned claims).
+      if (isCosmetic)
+        HighlightRow(
+          icon: Icons.eco_rounded,
+          iconColor: concerning.isEmpty ? colors.neonEmerald : kWarnAmber,
+          title: 'Skin compatibility',
+          subtitle: concerning.isEmpty
+              ? 'No concerns found for $skinType.'
+              : '${concerning.length} ingredient${concerning.length == 1 ? '' : 's'} flagged for $skinType.',
+          colors: colors,
+          onTap: concerning.isEmpty ? null : () => open(flaggedOnly: true),
         ),
+      if (ingredients.isNotEmpty)
+        HighlightRow(
+          icon: Icons.science_rounded,
+          iconColor: colors.neonEmerald,
+          title: 'Ingredients',
+          subtitle:
+              '${ingredients.length} ingredient${ingredients.length == 1 ? '' : 's'}'
+              '${concerning.isEmpty ? '' : ' · ${concerning.length} flagged'}. Tap to view all.',
+          colors: colors,
+          onTap: () => open(flaggedOnly: false),
+        ),
+      if (concerning.isNotEmpty)
+        HighlightRow(
+          icon: Icons.warning_rounded,
+          iconColor: kWarnAmber,
+          title: 'Watch out',
+          subtitle:
+              'Contains ${concerning.first.name}${concerning.first.concerns.isNotEmpty ? ' which may ${concerning.first.concerns.first}' : ''}.',
+          colors: colors,
+          onTap: () => open(flaggedOnly: true),
+        ),
+    ];
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return BoldCard(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) RowDivider(colors: colors),
+            rows[i],
+          ],
+        ],
       ),
     );
   }
 }
 
-class _AddToRoutineButton extends StatelessWidget {
-  final VoidCallback? onTap;
-  final AppThemeColors colors;
-  const _AddToRoutineButton({this.onTap, required this.colors});
+/// Bottom action pill: [filled] = solid accent with dark text (main action),
+/// otherwise dark with white text and an accent icon. Fixed height so two
+/// pills side by side line up; content centered.
+class _ActionPill extends StatelessWidget {
+  final String label;
+  final String semanticLabel;
+  final IconData icon;
+  final bool iconAfter;
+  final bool filled;
+  final VoidCallback onTap;
+
+  const _ActionPill({
+    required this.label,
+    required this.semanticLabel,
+    required this.icon,
+    required this.filled,
+    required this.onTap,
+    this.iconAfter = false,
+  });
+
+  static double get _padding => 14.w;
+  static double get _iconGap => 6.w;
+  static double get _iconSize => 20.r;
+
+  TextStyle _style(Color color) => TextStyle(color: color, fontSize: 14.5.sp, fontWeight: FontWeight.w700);
+
+  /// Padding + icon + gap + label, at the user's text size.
+  double naturalWidth(BuildContext context) =>
+      _padding * 2 + _iconSize + _iconGap + measureText(context, label, _style(Colors.white));
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20.r),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 22.r,
-              height: 22.r,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: colors.neonEmerald),
-              ),
-              child: Icon(
-                Icons.add_rounded,
-                color: colors.neonEmerald,
-                size: 15.r,
-              ),
+    final accent = boldAccent(context);
+    final fg = filled ? kOnAccent : Colors.white;
+    final iconWidget = Icon(icon, color: filled ? kOnAccent : accent, size: _iconSize);
+    return Tooltip(
+      message: semanticLabel,
+      child: Semantics(
+        button: true,
+        label: semanticLabel,
+        excludeSemantics: true,
+        child: Pressable(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          child: Container(
+            height: 54.r,
+            alignment: Alignment.center,
+            padding: EdgeInsets.symmetric(horizontal: _padding),
+            decoration: BoxDecoration(
+              color: filled ? accent : boldCardFill(context.colors),
+              borderRadius: BorderRadius.circular(32.r),
             ),
-            SizedBox(width: 8.w),
-            Text(
-              'Add to My Routine',
-              style: TextStyle(
-                color: colors.neonEmerald,
-                fontSize: 14.5.sp,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!iconAfter) ...[iconWidget, SizedBox(width: _iconGap)],
+                Flexible(
+                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: _style(fg)),
+                ),
+                if (iconAfter) ...[SizedBox(width: _iconGap), iconWidget],
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

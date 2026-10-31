@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -8,16 +9,14 @@ import '../../domain/entities/safety_engine_entity.dart';
 import '../bloc/ai_analysis_bloc.dart';
 import '../bloc/ai_analysis_event.dart';
 import '../bloc/ai_analysis_state.dart';
-import 'ai_result_card.dart';
+import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/bold_card.dart';
+import '../pages/ai_verdict_page.dart';
+import 'ai_verdict_style.dart';
 
 /// Below this share of recognised ingredients our database result is "weak"
 /// and the AI button is offered. Same value as the backend's `SAFE_MIN_COVERAGE`.
 const double kAiCoverageThreshold = 0.7;
-
-/// The AI offer card is a flat, opaque surface (not glass) so it reads as a
-/// different kind of card from the translucent ones. Change the colours here.
-const Color kAiCardSurface = Color(0xFF17232F);
-const Color kAiCardInk = Color(0xFF0F1A24); // text on the white button
 
 /// The opt-in "Get AI verdict" block, placed beside (never replacing) the
 /// database result via `AnalysisResultView.aiSection`.
@@ -73,15 +72,16 @@ class _AiVerdictBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<AiAnalysisBloc, AiAnalysisState>(
       builder: (context, state) {
+        void open() => AiVerdictPage.open(context, request: request, initial: initial);
+        void ask() {
+          context.read<AiAnalysisBloc>().add(AiAnalysisRequested(request));
+          open();
+        }
+
         final analysis = state.analysis ?? initial;
-        if (analysis != null) return AiResultCard(analysis: analysis);
-        void ask() => context.read<AiAnalysisBloc>().add(AiAnalysisRequested(request));
+        if (analysis != null) return _ResultRow(analysis: analysis, onTap: open);
         return switch (state.status) {
-          AiAnalysisStatus.loading => const _InfoCard(
-              title: 'Analysing with AI…',
-              body: 'This can take up to half a minute.',
-              loading: true,
-            ),
+          AiAnalysisStatus.loading => _LoadingRow(onTap: open),
           AiAnalysisStatus.failure => _FailureCard(failure: state.failure!, onRetry: ask),
           _ => _OfferCard(engine: engine, credits: state.credits, onAsk: ask),
         };
@@ -90,7 +90,108 @@ class _AiVerdictBody extends StatelessWidget {
   }
 }
 
-/// Slim one-row bar (not a card): sparkle, short text, compact button.
+/// The answer, folded to one tappable row; the full result lives on [AiVerdictPage].
+class _ResultRow extends StatelessWidget {
+  final AiAnalysis analysis;
+  final VoidCallback onTap;
+
+  const _ResultRow({required this.analysis, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = analysis.verdict.color(context.colors);
+    return _RowShell(
+      onTap: onTap,
+      leading: Container(
+        width: 42.r,
+        height: 42.r,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: accent, width: 3)),
+        child: Text(
+          '${analysis.score}',
+          style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w700),
+        ),
+      ),
+      title: analysis.verdict.label,
+      titleColor: accent,
+      subtitle: 'AI estimate · unverified',
+    );
+  }
+}
+
+class _LoadingRow extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _LoadingRow({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return _RowShell(
+      onTap: onTap,
+      leading: SizedBox.square(
+        dimension: 42.r,
+        child: Center(
+          child: SizedBox.square(
+            dimension: 20.r,
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: boldAccent(context)),
+          ),
+        ),
+      ),
+      title: 'Analysing with AI…',
+      titleColor: Colors.white,
+      subtitle: 'Tap to watch progress',
+    );
+  }
+}
+
+class _RowShell extends StatelessWidget {
+  final VoidCallback onTap;
+  final Widget leading;
+  final String title;
+  final Color titleColor;
+  final String subtitle;
+
+  const _RowShell({
+    required this.onTap,
+    required this.leading,
+    required this.title,
+    required this.titleColor,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: BoldCard(
+        padding: EdgeInsets.fromLTRB(14.w, 12.h, 12.w, 12.h),
+        child: Row(
+          children: [
+            leading,
+            SizedBox(width: 14.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(color: titleColor, fontSize: 15.sp, fontWeight: FontWeight.w700)),
+                  SizedBox(height: 2.h),
+                  Text(subtitle, style: TextStyle(color: context.colors.secondaryText, fontSize: 12.sp)),
+                ],
+              ),
+            ),
+            SizedBox(width: 10.w),
+            CircleIcon(icon: Icons.arrow_forward_rounded, background: boldAccent(context), foreground: kOnAccent, size: 38.r),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One dark card: icon tile, short text, compact accent button.
 class _OfferCard extends StatelessWidget {
   final SafetyEngine? engine;
   final AiCredits? credits;
@@ -103,17 +204,12 @@ class _OfferCard extends StatelessWidget {
     final noCredits = credits != null && credits!.remaining <= 0;
     final e = engine;
     final known = e != null && e.totalCount > 0 ? 'Only ${e.recognisedCount} of ${e.totalCount} known' : 'Little data';
-    return Container(
-      padding: EdgeInsets.fromLTRB(16.w, 12.h, 12.w, 12.h),
-      decoration: BoxDecoration(
-        color: kAiCardSurface,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
+    return BoldCard(
+      padding: EdgeInsets.fromLTRB(14.w, 12.h, 12.w, 12.h),
       child: Row(
         children: [
-          Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 18.r),
-          SizedBox(width: 10.w),
+          IconTile(icon: Icons.psychology_rounded, color: boldAccent(context)),
+          SizedBox(width: 12.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,7 +221,7 @@ class _OfferCard extends StatelessWidget {
                 SizedBox(height: 2.h),
                 Text(
                   '$known · ${_creditsLine(credits)}',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11.sp),
+                  style: TextStyle(color: context.colors.secondaryText, fontSize: 11.sp),
                 ),
               ],
             ),
@@ -152,71 +248,40 @@ class _FailureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final retryable = switch (failure.kind) {
-      AiFailureKind.unavailable || AiFailureKind.network || AiFailureKind.other => true,
-      _ => false,
-    };
     return _InfoCard(
-      title: switch (failure.kind) {
-        AiFailureKind.ingredientsMissing => 'No ingredient list yet',
-        AiFailureKind.creditsExhausted => 'No AI credits left',
-        _ => 'AI verdict unavailable',
-      },
-      body: failureMessage(failure),
-      footer: retryable
+      title: failure.title,
+      body: failure.userMessage,
+      footer: failure.retryable
           ? Padding(
               padding: EdgeInsets.only(top: 12.h),
-              child: TextButton(onPressed: onRetry, child: const Text('Try again')),
+              child: TextButton(
+                onPressed: onRetry,
+                style: TextButton.styleFrom(foregroundColor: boldAccent(context)),
+                child: const Text('Try again'),
+              ),
             )
           : null,
     );
   }
-
-  /// User-facing text per failure; never shows raw server output for known kinds.
-  static String failureMessage(AiFailure f) => switch (f.kind) {
-        AiFailureKind.ingredientsMissing =>
-          'We have no ingredient list for this product. Go back and scan the ingredients label, then ask for the AI verdict.',
-        AiFailureKind.creditsExhausted => f.resetsAt != null
-            ? 'You have used all AI credits for this week. They reset ${formatResetDate(f.resetsAt!)}.'
-            : 'You have used all AI credits for this week.',
-        AiFailureKind.unavailable => 'AI is not available right now. You were not charged, so please try again later.',
-        AiFailureKind.notFound => 'We could not find this product.',
-        AiFailureKind.network => 'No internet connection. Check your connection and try again.',
-        AiFailureKind.other => 'Something went wrong. Please try again.',
-      };
 }
 
 class _InfoCard extends StatelessWidget {
   final String title;
   final String body;
   final Widget? footer;
-  final bool loading;
 
-  const _InfoCard({required this.title, required this.body, this.footer, this.loading = false});
+  const _InfoCard({required this.title, required this.body, this.footer});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(18.r),
-      decoration: BoxDecoration(
-        color: kAiCardSurface,
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
+    return BoldCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              loading
-                  ? SizedBox(
-                      width: 14.r,
-                      height: 14.r,
-                      child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-                    )
-                  : Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 15.r),
-              SizedBox(width: 8.w),
+              IconTile(icon: Icons.psychology_rounded, color: context.colors.secondaryText, size: 30.r),
+              SizedBox(width: 10.w),
               Expanded(
                 child: Text(
                   title,
@@ -226,7 +291,7 @@ class _InfoCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: 6.h),
-          Text(body, style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12.5.sp, height: 1.4)),
+          Text(body, style: TextStyle(color: context.colors.secondaryText, fontSize: 12.5.sp, height: 1.4)),
           if (footer != null) footer!,
         ],
       ),
@@ -234,15 +299,7 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-/// "Mon 20 Oct" (local time) for the weekly credit reset.
-String formatResetDate(DateTime resetsAt) {
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  final d = resetsAt.toLocal();
-  return '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]}';
-}
-
-/// White pill; dimmed and inert when [onTap] is null.
+/// Accent pill; dimmed and inert when [onTap] is null.
 class _AiButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -252,19 +309,20 @@ class _AiButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Opacity(
       opacity: onTap == null ? 0.45 : 1,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20.r),
+      child: Pressable(
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                onTap!();
+              },
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
           alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.r),
-            color: Colors.white,
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20.r), color: boldAccent(context)),
           child: Text(
             label,
-            style: TextStyle(color: kAiCardInk, fontSize: 12.5.sp, fontWeight: FontWeight.w800),
+            style: TextStyle(color: kOnAccent, fontSize: 12.5.sp, fontWeight: FontWeight.w800),
           ),
         ),
       ),

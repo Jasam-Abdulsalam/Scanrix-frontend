@@ -14,14 +14,12 @@ enum BreakdownTab { watchOut, good, notAssessed }
 /// presentation; the selected tab is local UI state.
 class IngredientsBreakdownPage extends StatefulWidget {
   final SafetyEngine engine;
-  final List<String> unknownIngredients;
   final String? productName;
   final BreakdownTab initialTab;
 
   const IngredientsBreakdownPage({
     super.key,
     required this.engine,
-    this.unknownIngredients = const [],
     this.productName,
     this.initialTab = BreakdownTab.watchOut,
   });
@@ -38,10 +36,10 @@ class _IngredientsBreakdownPageState extends State<IngredientsBreakdownPage> {
     final colors = context.colors;
     final flagged = widget.engine.flagged;
     final good = widget.engine.clear;
-    final notAssessed = NotAssessedSection.merge(
-      widget.engine.notAssessed.map((f) => f.rawName),
-      widget.unknownIngredients,
-    );
+    final notAssessed = [
+      for (final f in widget.engine.notAssessed)
+        if (f.rawName.trim().isNotEmpty) f.rawName.trim(),
+    ];
     final counts = {
       BreakdownTab.watchOut: flagged.length,
       BreakdownTab.good: good.length,

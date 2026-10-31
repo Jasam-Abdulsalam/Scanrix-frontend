@@ -40,7 +40,6 @@ class IngredientAnalysisResultPage extends StatelessWidget {
         overallScore: analysis.overallScore,
         summary: analysis.summary,
         safetyEngine: analysis.safetyEngine,
-        unknownIngredients: analysis.unknownIngredients,
         aiSection: ingredientsText.trim().length < 5
             ? null
             : AiVerdictSection(
@@ -48,8 +47,10 @@ class IngredientAnalysisResultPage extends StatelessWidget {
                 engine: analysis.safetyEngine,
                 verdict: analysis.verdict,
               ),
-        productName: productName ?? 'Scanned ${category.label}',
-        productImageUrl: productImageUrl ?? category.assetPath,
+        // No fallbacks: without a real name/photo this is a label scan, and the
+        // view shows "Label scan" instead of a fake product card.
+        productName: productName,
+        productImageUrl: productImageUrl,
         category: category.label,
         onBack: () => Navigator.of(context).maybePop(),
       ),
