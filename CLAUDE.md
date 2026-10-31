@@ -228,10 +228,12 @@ accounts until this is done):
    Play Services against the package name + SHA-1 registered in step 1.
 4. Known nuance to watch for once real credentials are in: Google's ID token audience
    handling differs slightly by platform (iOS can issue tokens audienced to the iOS
-   client rather than the Web one). If the backend rejects a real iOS sign-in with an
-   audience mismatch, the fix is on the backend side (accept the iOS client ID as an
-   additional valid audience) — don't work around it by relaxing verification on the
-   frontend.
+   client rather than the Web one). Confirmed: iOS tokens carry the iOS client ID. The
+   backend accepts it via `GOOGLE_EXTRA_CLIENT_IDS` (comma-separated, backend `.env`);
+   put the iOS client ID there. Don't work around it by relaxing verification on the
+   frontend. The iOS client ID also goes in `ios/Runner/Info.plist` (`GIDClientID` and the
+   reversed ID as a URL scheme), and must be in the same Google Cloud project as the Web
+   client, registered for the exact bundle ID the build uses.
 
 The JWT is now persisted: `core/storage/token_storage.dart` wraps `flutter_secure_storage`
 (Keychain/Keystore — deliberately not `shared_preferences`, since a JWT is a bearer

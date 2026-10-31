@@ -42,6 +42,7 @@ class ScanrixApp extends StatelessWidget {
         builder: (context, child) => BlocBuilder<ThemeCubit, ThemeMode>(
           builder: (context, themeMode) {
             return MaterialApp(
+              debugShowCheckedModeBanner: false,
               title: 'Scanrix',
               theme: AppTheme.light,
               darkTheme: AppTheme.dark,
