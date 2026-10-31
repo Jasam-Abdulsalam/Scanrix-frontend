@@ -21,6 +21,8 @@ import '../../features/history/domain/usecases/get_scan_history_usecase.dart';
 import '../../features/history/domain/usecases/get_scan_count_usecase.dart';
 import '../../features/history/presentation/bloc/history_bloc.dart';
 import '../../features/history/presentation/bloc/scan_count_cubit.dart';
+import '../../features/alternatives/domain/usecases/get_alternatives_usecase.dart';
+import '../../features/alternatives/presentation/bloc/alternatives_bloc.dart';
 import '../../features/products/domain/usecases/analyze_with_ai_usecase.dart';
 import '../../features/products/domain/usecases/get_ai_credits_usecase.dart';
 import '../../features/products/domain/usecases/get_product_usecase.dart';
@@ -102,6 +104,12 @@ Future<void> init() async {
   );
   sl.registerLazySingleton(() => AnalyzeWithAiUseCase(apiClient: sl()));
   sl.registerLazySingleton(() => GetAiCreditsUseCase(apiClient: sl()));
+
+  // ---------------- Alternatives ----------------
+  // One bloc per Alternatives screen. The use case returns mock data until the
+  // backend endpoint exists (see GetAlternativesUseCase).
+  sl.registerFactory(() => AlternativesBloc(getAlternativesUseCase: sl()));
+  sl.registerLazySingleton(() => GetAlternativesUseCase(apiClient: sl()));
 
   // ---------------- Scan ----------------
   sl.registerFactory(

@@ -39,7 +39,7 @@ Beauty Facts API (not assumed) before designing anything:
 ## Decisions made
 
 - **Ingredients-flow AI context**: category + ingredient text is sufficient — no product-type picker added. (Route-of-exposure — topical vs. ingested — drives ingredient risk more than the specific product subtype; confirmed as a reasonable default, not a hard requirement.)
-- **Alternatives**: ingredient-level guidance only ("avoid X", "look for Y-free") in both flows — no named-product suggestions, since only the barcode flow has enough product identity for that, and even there no catalog/logic for it exists.
+- **Alternatives** *(revised 2026-10-31)*: the **barcode flow** now shows named-product alternatives on a dedicated `AlternativesPage` (`lib/features/alternatives/`), opened from the result screen's "Alternatives" button. The backend endpoint (`GET /products/{barcode}/alternatives`, path and shape provisional) doesn't exist yet, so `GetAlternativesUseCase` returns mock data. The **label/OCR flow** still has no product identity, so its "Alternatives" button stays "coming soon". *Superseded:* ingredient-level guidance only ("avoid X", "look for Y-free") in both flows, with no named products.
 - **Analyzing state**: confirm first (image/name/brand from the already-returned `/scan/` data), *then* push a polling result screen — not a silent pre-confirmation wait.
 - **Not-found recovery**: dedicated full-screen state with a primary "Scan Ingredients Instead" CTA.
 - **Backend summary-drop**: fix it — persist `summary` too, so barcode results aren't structurally worse than ingredients results.

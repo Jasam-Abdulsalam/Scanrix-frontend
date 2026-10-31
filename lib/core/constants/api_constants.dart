@@ -22,6 +22,10 @@ class ApiConstants {
   // products
   static String productByBarcode(String barcode) => '/products/$barcode';
 
+  /// PROVISIONAL: the backend doesn't serve this yet (GetAlternativesUseCase
+  /// returns mock data). Confirm the path when the endpoint is built.
+  static String productAlternatives(String barcode) => '/products/${Uri.encodeComponent(barcode)}/alternatives';
+
   // scan
   static const String scan = '/scan/';
   static const String analyzeText = '/scan/analyze-text';

@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/toast.dart';
+import '../../../alternatives/presentation/pages/alternatives_page.dart';
 import '../../../favorites/presentation/bloc/favorites_bloc.dart';
 import '../../../favorites/presentation/bloc/favorites_event.dart';
 import '../../../favorites/presentation/bloc/favorites_state.dart';
@@ -153,6 +154,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   bloc.add(isFavorite ? FavoriteRemoved(product.barcode) : FavoriteAdded(product.barcode));
                 },
                 onBack: () => Navigator.of(context).maybePop(),
+                onViewAlternatives: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AlternativesPage(
+                      barcode: product.barcode,
+                      productName: product.name,
+                      originalScore: product.overallScore,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
