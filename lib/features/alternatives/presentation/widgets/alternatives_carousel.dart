@@ -13,10 +13,11 @@ import 'tap_ring_painter.dart';
 
 /// Rotating wheel of alternative cards with a semicircle dial underneath.
 ///
-/// The cards sit on a big circle whose centre (the pivot) is below the
-/// screen. Swiping turns the wheel: side cards tilt and drop along the arc,
-/// as if on a turning ring. The dial's ticks turn by the
-/// same angle, so cards and ticks move together.
+/// The cards are spokes of a wheel turning around the dial's centre, a
+/// quarter turn apart. At rest only the centred card is on screen. On a swipe
+/// the current card swings out and down past one bottom corner while the next
+/// one swings up from the other corner and turns upright in the middle. The
+/// dial's ticks turn with the swipe.
 ///
 /// How it's put together (bottom to top in the Stack):
 /// 1. The semicircle dial.
@@ -57,17 +58,19 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
   /// to turn the wheel by one card.
   static const _viewportFraction = 0.62;
 
-  /// Wheel turn per card (rad), shared by the cards and the dial.
-  static const _angleStep = 0.42;
-
-  /// Wheel radius relative to the carousel width. Bigger = flatter arc.
-  static const _wheelRadiusFactor = 1.05;
+  /// Dial turn per card (rad).
+  static const _dialStep = 0.42;
 
   /// Semicircle dial radius relative to the carousel width (0.5 = edge to edge).
   static const _dialRadiusFactor = 0.46;
 
-  static const _scaleStep = 0.06;
-  static const _minScale = 0.85;
+  /// Centred card width relative to the carousel width.
+  static const _cardWidthFactor = 0.66;
+
+  /// Wheel turn per card (rad): a quarter turn, so the cards are spokes 90°
+  /// apart. At rest the neighbours are off screen; halfway through a swap
+  /// both cards are down in the bottom corners.
+  static const _cardStep = math.pi / 2;
 
   late final PageController _pc = PageController(viewportFraction: _viewportFraction);
   late final AnimationController _press = AnimationController(vsync: this);
@@ -153,12 +156,12 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
         final dialTop = height - dialRadius;
 
         // Cards centred in the space above the dial.
-        final cardWidth = width * 0.58;
+        final cardWidth = width * _cardWidthFactor;
         final cardHeight = math.max(0.0, math.min(cardWidth * 1.3, dialTop - gap * 2));
         final cardCenterY = dialTop / 2;
 
-        final wheelRadius = width * _wheelRadiusFactor;
-        final pivot = Offset(width / 2, cardCenterY + wheelRadius);
+        // The cards are spokes turning around the dial's centre.
+        final wheel = _Wheel(pivot: dialCenter, radius: math.max(1.0, dialCenter.dy - cardCenterY));
 
         return Stack(
           key: _stackKey,
@@ -171,7 +174,7 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
                   itemCount: widget.items.length,
                   center: dialCenter,
                   radius: dialRadius,
-                  angleStep: _angleStep,
+                  angleStep: _dialStep,
                   discColor: Colors.white,
                   tickColor: Colors.white,
                   indicatorColor: const Color(0xFFFF4D4D),
@@ -186,7 +189,7 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
               animation: Listenable.merge([_pc, _press]),
               builder: (context, _) => Stack(
                 clipBehavior: Clip.none,
-                children: _buildCards(pivot, wheelRadius, cardWidth, cardHeight),
+                children: _buildCards(wheel, cardWidth, cardHeight),
               ),
             ),
             NotificationListener<ScrollEndNotification>(
@@ -227,27 +230,32 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
     );
   }
 
-  List<Widget> _buildCards(Offset pivot, double wheelRadius, double cardWidth, double cardHeight) {
+  List<Widget> _buildCards(_Wheel wheel, double cardWidth, double cardHeight) {
     final page = _page;
-    // Far cards first, centred card last = on top.
+    // Only the centred card and the ones swinging in/out are on screen.
+    // Far cards first, centred card last = on top; the two swap order at the
+    // halfway point, when both are down in the bottom corners.
     final order = List<int>.generate(widget.items.length, (i) => i)
-      ..removeWhere((i) => (i - page).abs() > 2.2)
+      ..removeWhere((i) => (i - page).abs() >= 1.5)
       ..sort((a, b) => (b - page).abs().compareTo((a - page).abs()));
 
     return [
-      for (final i in order) _wheelCard(i, i - page, pivot, wheelRadius, cardWidth, cardHeight),
+      for (final i in order) _wheelCard(i, i - page, wheel, cardWidth, cardHeight),
     ];
   }
 
-  Widget _wheelCard(int index, double delta, Offset pivot, double wheelRadius, double cardWidth, double cardHeight) {
-    final angle = delta * _angleStep;
-    // Point on the wheel at this angle (0 = straight up from the pivot).
-    final center = pivot + Offset(math.sin(angle), -math.cos(angle)) * wheelRadius;
+  Widget _wheelCard(int index, double delta, _Wheel wheel, double cardWidth, double cardHeight) {
+    // Spoke angle: 0 = straight up from the pivot, positive = clockwise.
+    // The next card waits a quarter turn to the right and the wheel turns
+    // counter-clockwise to bring it up.
+    final angle = delta * _cardStep;
+    final center = wheel.pivot + Offset(math.sin(angle), -math.cos(angle)) * wheel.radius;
 
-    var scale = math.max(_minScale, 1 - delta.abs() * _scaleStep);
-    if (index == _pressedIndex) scale *= 1 - 0.04 * _press.value;
-    // Neighbours stay fully visible; cards further out fade away.
-    final opacity = (1 - (delta.abs() - 1).clamp(0.0, 1.0)).toDouble();
+    // Same size all the way round, like the reference; only the tap press
+    // shrinks the card.
+    final scale = index == _pressedIndex ? 1 - 0.04 * _press.value : 1.0;
+    // Fades only past a quarter turn, where it is off screen anyway.
+    final opacity = (1 - (delta.abs() - 1) / 0.5).clamp(0.0, 1.0);
 
     final transform = Matrix4.identity()
       ..rotateZ(angle)
@@ -275,4 +283,13 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
       ),
     );
   }
+}
+
+/// Where the card wheel turns: around [pivot] (the dial's centre) at
+/// [radius] (pivot to the centred card's centre).
+class _Wheel {
+  final Offset pivot;
+  final double radius;
+
+  const _Wheel({required this.pivot, required this.radius});
 }
