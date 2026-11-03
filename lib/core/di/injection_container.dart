@@ -106,8 +106,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetAiCreditsUseCase(apiClient: sl()));
 
   // ---------------- Alternatives ----------------
-  // One bloc per Alternatives screen. The use case returns mock data until the
-  // backend endpoint exists (see GetAlternativesUseCase).
+  // One bloc per Alternatives screen (factory), shared use case. AI-suggested
+  // alternatives: POST /ai/alternatives, 1 weekly credit unless already saved.
   sl.registerFactory(() => AlternativesBloc(getAlternativesUseCase: sl()));
   sl.registerLazySingleton(() => GetAlternativesUseCase(apiClient: sl()));
 

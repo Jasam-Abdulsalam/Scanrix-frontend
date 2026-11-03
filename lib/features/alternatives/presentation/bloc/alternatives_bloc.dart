@@ -8,8 +8,8 @@ import 'alternatives_state.dart';
 
 /// One per Alternatives screen (registered as a factory).
 ///
-/// `droppable()`: a retry tapped while a request is running is ignored
-/// rather than queued, so a double tap never fires two requests.
+/// `droppable()`: a retry tapped while a request is running is ignored rather
+/// than queued, so a double tap can never become two paid AI calls.
 class AlternativesBloc extends Bloc<AlternativesEvent, AlternativesState> {
   final GetAlternativesUseCase getAlternativesUseCase;
 
@@ -21,12 +21,31 @@ class AlternativesBloc extends Bloc<AlternativesEvent, AlternativesState> {
     emit(const AlternativesLoading());
     try {
       emit(AlternativesLoaded(await getAlternativesUseCase(event.barcode)));
-    } on NetworkException {
-      emit(const AlternativesFailure('No connection. Check your internet and try again.'));
-    } on ServerException catch (e) {
-      emit(AlternativesFailure(e.message.isEmpty ? "Couldn't load alternatives." : e.message));
-    } catch (_) {
-      emit(const AlternativesFailure("Couldn't load alternatives."));
+    } catch (e) {
+      emit(_failureFrom(e));
     }
+  }
+
+  AlternativesFailure _failureFrom(Object e) {
+    if (e is NetworkException) {
+      return const AlternativesFailure(
+          AlternativesFailureKind.network, 'No connection. Check your internet and try again.');
+    }
+    if (e is! ServerException) {
+      return const AlternativesFailure(AlternativesFailureKind.other, "Couldn't load alternatives.");
+    }
+    return switch ((e.statusCode, e.code)) {
+      (429, _) => AlternativesFailure(
+          AlternativesFailureKind.creditsExhausted,
+          "You've used this week's AI credits.",
+          resetsAt: DateTime.tryParse(e.details?['resets_at']?.toString() ?? ''),
+        ),
+      (503, _) => const AlternativesFailure(AlternativesFailureKind.unavailable,
+          'AI suggestions are not available right now. You were not charged. Try again later.'),
+      (422, 'ingredients_missing') => const AlternativesFailure(AlternativesFailureKind.ingredientsMissing,
+          'This product has no ingredient list yet, so we can\'t suggest alternatives. Scan its ingredients label.'),
+      _ => AlternativesFailure(
+          AlternativesFailureKind.other, e.message.isEmpty ? "Couldn't load alternatives." : e.message),
+    };
   }
 }

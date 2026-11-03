@@ -22,10 +22,6 @@ class ApiConstants {
   // products
   static String productByBarcode(String barcode) => '/products/$barcode';
 
-  /// PROVISIONAL: the backend doesn't serve this yet (GetAlternativesUseCase
-  /// returns mock data). Confirm the path when the endpoint is built.
-  static String productAlternatives(String barcode) => '/products/${Uri.encodeComponent(barcode)}/alternatives';
-
   // scan
   static const String scan = '/scan/';
   static const String analyzeText = '/scan/analyze-text';
@@ -33,6 +29,7 @@ class ApiConstants {
   // ai (opt-in "Get AI verdict", see the backend's API_CONTRACT.md section 11)
   static const String aiAnalyzeProduct = '/ai/analyze-product';
   static const String aiCredits = '/ai/credits';
+  static const String aiAlternatives = '/ai/alternatives';
 
   // history
   static const String history = '/history/';

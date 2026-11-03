@@ -17,21 +17,42 @@ class AlternativesLoading extends AlternativesState {
   const AlternativesLoading();
 }
 
-/// [items] may be empty: no better-scored product was found.
+/// `result.alternatives` may be empty: the AI found nothing it was confident about.
 class AlternativesLoaded extends AlternativesState {
-  final List<AlternativeProductEntity> items;
+  final AlternativesResult result;
 
-  const AlternativesLoaded(this.items);
+  const AlternativesLoaded(this.result);
 
   @override
-  List<Object?> get props => [items];
+  List<Object?> get props => [result];
+}
+
+/// Why loading failed; the page picks the icon, title and whether to offer a retry.
+enum AlternativesFailureKind {
+  /// 429 `ai_credits_exhausted`: [AlternativesFailure.resetsAt] says when credits come back.
+  creditsExhausted,
+
+  /// 503 `ai_unavailable`: the user was NOT charged; worth retrying later.
+  unavailable,
+
+  /// 422 `ingredients_missing`: the product has no ingredient list.
+  ingredientsMissing,
+
+  network,
+  other,
 }
 
 class AlternativesFailure extends AlternativesState {
+  final AlternativesFailureKind kind;
   final String message;
+  final DateTime? resetsAt;
 
-  const AlternativesFailure(this.message);
+  const AlternativesFailure(this.kind, this.message, {this.resetsAt});
+
+  bool get canRetry => kind == AlternativesFailureKind.unavailable ||
+      kind == AlternativesFailureKind.network ||
+      kind == AlternativesFailureKind.other;
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [kind, message, resetsAt];
 }

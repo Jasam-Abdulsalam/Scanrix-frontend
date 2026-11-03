@@ -14,23 +14,23 @@ import '../widgets/alternative_style.dart';
 import '../widgets/alternatives_carousel.dart';
 import 'alternative_detail_page.dart';
 
-/// "Better alternatives" for a scanned product: a 3D coverflow of
-/// better-scored products. Tapping the centred card expands it into
-/// [AlternativeDetailPage].
+/// "Better alternatives" for a scanned product: AI-suggested alternatives
+/// (`POST /ai/alternatives`) on a rotating card wheel. Tapping the centred card
+/// expands it into [AlternativeDetailPage].
 ///
-/// Owns its own [AlternativesBloc] (one per screen).
+/// Costs 1 weekly AI credit the first time anyone asks for this product; after
+/// that the saved answer is free. Owns its own [AlternativesBloc] (one per screen).
 class AlternativesPage extends StatelessWidget {
   final String barcode;
   final String? productName;
-  final int? originalScore;
 
-  const AlternativesPage({super.key, required this.barcode, this.productName, this.originalScore});
+  const AlternativesPage({super.key, required this.barcode, this.productName});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<AlternativesBloc>()..add(AlternativesRequested(barcode)),
-      child: _AlternativesView(barcode: barcode, productName: productName, originalScore: originalScore),
+      child: _AlternativesView(barcode: barcode, productName: productName),
     );
   }
 }
@@ -38,9 +38,8 @@ class AlternativesPage extends StatelessWidget {
 class _AlternativesView extends StatefulWidget {
   final String barcode;
   final String? productName;
-  final int? originalScore;
 
-  const _AlternativesView({required this.barcode, this.productName, this.originalScore});
+  const _AlternativesView({required this.barcode, this.productName});
 
   @override
   State<_AlternativesView> createState() => _AlternativesViewState();
@@ -57,8 +56,9 @@ class _AlternativesViewState extends State<_AlternativesView> {
       backgroundColor: colors.background,
       body: BlocBuilder<AlternativesBloc, AlternativesState>(
         builder: (context, state) {
-          final items = state is AlternativesLoaded ? state.items : const <AlternativeProductEntity>[];
-          final glow = items.isEmpty ? colors.neonEmerald : altPaletteAt(_active.clamp(0, items.length - 1)).glow;
+          final result = state is AlternativesLoaded ? state.result : null;
+          final count = result?.alternatives.length ?? 0;
+          final glow = count == 0 ? colors.neonEmerald : altPaletteAt(_active.clamp(0, count - 1)).glow;
           return Stack(
             children: [
               // Soft tint of the centred card, cross-fading as you swipe.
@@ -79,7 +79,7 @@ class _AlternativesViewState extends State<_AlternativesView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Header(productName: widget.productName),
+                    _Header(productName: widget.productName, productType: result?.productType),
                     Expanded(child: _body(context, state)),
                   ],
                 ),
@@ -93,46 +93,45 @@ class _AlternativesViewState extends State<_AlternativesView> {
 
   Widget _body(BuildContext context, AlternativesState state) {
     return switch (state) {
-      AlternativesLoaded(:final items) when items.isEmpty => const _Message(
+      AlternativesLoaded(:final result) when result.alternatives.isEmpty => const _Message(
           icon: Icons.search_off_rounded,
-          title: 'No better-scored alternatives yet',
-          body: "We couldn't find a similar product that scores higher. Check back as our catalogue grows.",
+          title: 'No confident alternative found',
+          body: "Our AI couldn't find a similar product it was sure is better. We'd rather show nothing than guess.",
         ),
-      AlternativesLoaded(:final items) => Column(
+      AlternativesLoaded(:final result) => Column(
           children: [
-            // Hint above the carousel: the dial owns the bottom edge.
-            Padding(
-              padding: EdgeInsets.only(top: 14.h),
-              child: Center(
-                child: Text(
-                  'Swipe to compare · tap a card for details',
-                  style: TextStyle(color: context.colors.secondaryText, fontSize: 12.sp),
-                ),
-              ),
-            ),
+            // Hints above the carousel: the dial owns the bottom edge.
+            _Hints(result: result),
             // Runs down to the bottom safe-area edge (the page's SafeArea),
             // where the dial's flat edge sits.
             Expanded(
               child: AlternativesCarousel(
-                items: items,
-                originalScore: widget.originalScore,
+                items: result.alternatives,
+                originalPriceInr: result.originalPriceInr,
                 onActiveChanged: (i) => setState(() => _active = i),
                 onOpen: (item, palette) => openAlternativeDetail(
                   context,
                   item: item,
                   palette: palette,
-                  originalScore: widget.originalScore,
+                  disclaimer: result.disclaimer,
+                  originalPriceInr: result.originalPriceInr,
                   originalName: widget.productName,
                 ),
               ),
             ),
           ],
         ),
-      AlternativesFailure(:final message) => _Message(
-          icon: Icons.cloud_off_rounded,
-          title: "Couldn't load alternatives",
-          body: message,
-          actionLabel: 'Try again',
+      AlternativesFailure() => _Message(
+          icon: switch (state.kind) {
+            AlternativesFailureKind.creditsExhausted => Icons.hourglass_bottom_rounded,
+            AlternativesFailureKind.ingredientsMissing => Icons.document_scanner_outlined,
+            _ => Icons.cloud_off_rounded,
+          },
+          title: state.kind == AlternativesFailureKind.creditsExhausted
+              ? 'Out of AI credits'
+              : "Couldn't load alternatives",
+          body: state.resetsAt == null ? state.message : '${state.message} ${_resetsText(state.resetsAt!)}',
+          actionLabel: state.canRetry ? 'Try again' : null,
           onAction: () => context.read<AlternativesBloc>().add(AlternativesRequested(widget.barcode)),
         ),
       _ => const _Loading(),
@@ -140,10 +139,51 @@ class _AlternativesViewState extends State<_AlternativesView> {
   }
 }
 
+String _resetsText(DateTime resetsAt) {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  final t = resetsAt.toLocal();
+  return 'New credits on ${days[t.weekday - 1]}, ${t.day} ${months[t.month - 1]}.';
+}
+
+/// "AI suggestions · check the label before buying" plus, when this request
+/// used a credit, how many are left this week.
+class _Hints extends StatelessWidget {
+  final AlternativesResult result;
+
+  const _Hints({required this.result});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final left = result.creditsRemaining;
+    final credit = result.cached || left == null ? null : 'Used 1 AI credit · $left left this week';
+    return Padding(
+      padding: EdgeInsets.only(top: 14.h),
+      child: Center(
+        child: Column(
+          children: [
+            Text(
+              'AI suggestions · check the label before buying',
+              style: TextStyle(color: colors.secondaryText, fontSize: 12.sp),
+            ),
+            if (credit != null)
+              Padding(
+                padding: EdgeInsets.only(top: 2.h),
+                child: Text(credit, style: TextStyle(color: colors.secondaryText, fontSize: 11.sp)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Header extends StatelessWidget {
   final String? productName;
+  final String? productType;
 
-  const _Header({this.productName});
+  const _Header({this.productName, this.productType});
 
   @override
   Widget build(BuildContext context) {
@@ -174,9 +214,9 @@ class _Header extends StatelessWidget {
                   'Better alternatives',
                   style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w800),
                 ),
-                if (name.isNotEmpty)
+                if (name.isNotEmpty || productType != null)
                   Text(
-                    'Higher-scoring picks similar to $name',
+                    productType != null ? 'AI picks for this $productType' : 'Picks similar to $name',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: colors.secondaryText, fontSize: 12.sp),
@@ -202,7 +242,7 @@ class _Loading extends StatelessWidget {
         children: [
           CircularProgressIndicator(color: colors.neonEmerald),
           SizedBox(height: 16.h),
-          Text('Finding better options…', style: TextStyle(color: colors.secondaryText, fontSize: 13.sp)),
+          Text('AI is looking for better options…', style: TextStyle(color: colors.secondaryText, fontSize: 13.sp)),
         ],
       ),
     );

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/widgets/bold_card.dart';
-import '../../../products/presentation/pages/product_detail_page.dart';
 import '../../domain/entities/alternative_product_entity.dart';
 import '../widgets/alternative_card.dart';
 import '../widgets/alternative_style.dart';
@@ -16,7 +15,8 @@ Future<void> openAlternativeDetail(
   BuildContext context, {
   required AlternativeProductEntity item,
   required AltPalette palette,
-  int? originalScore,
+  required String disclaimer,
+  int? originalPriceInr,
   String? originalName,
 }) {
   return Navigator.of(context).push(
@@ -26,7 +26,8 @@ Future<void> openAlternativeDetail(
       pageBuilder: (_, _, _) => AlternativeDetailPage(
         item: item,
         palette: palette,
-        originalScore: originalScore,
+        disclaimer: disclaimer,
+        originalPriceInr: originalPriceInr,
         originalName: originalName,
       ),
       transitionsBuilder: (_, animation, _, child) => FadeTransition(
@@ -37,20 +38,22 @@ Future<void> openAlternativeDetail(
   );
 }
 
-/// Full-screen detail of one alternative. The carousel card grows into the
-/// background (Hero), the score counts up, and the rows slide up one by one.
-/// Dark text on the card's bright gradient, so the status bar icons go dark too.
+/// Full-screen detail of one AI-suggested alternative. The carousel card grows
+/// into the background (Hero), the price counts up, and the rows slide up one by
+/// one. Dark text on the card's bright gradient, so the status bar icons go dark too.
 class AlternativeDetailPage extends StatefulWidget {
   final AlternativeProductEntity item;
   final AltPalette palette;
-  final int? originalScore;
+  final String disclaimer;
+  final int? originalPriceInr;
   final String? originalName;
 
   const AlternativeDetailPage({
     super.key,
     required this.item,
     required this.palette,
-    this.originalScore,
+    required this.disclaimer,
+    this.originalPriceInr,
     this.originalName,
   });
 
@@ -92,23 +95,17 @@ class _AlternativeDetailPageState extends State<AlternativeDetailPage> with Sing
 
   List<Widget> _buildRows() {
     final item = widget.item;
-    final gain = item.scoreGainOver(widget.originalScore);
+    final compared = item.priceComparedTo(widget.originalPriceInr);
     return [
-      if (widget.originalScore != null && item.overallScore != null)
-        _ComparisonRow(
-          originalName: widget.originalName,
-          originalScore: widget.originalScore!,
-          score: item.overallScore!,
-          gain: gain,
+      if (item.whyBetter.isNotEmpty) _InfoRow(icon: Icons.lightbulb_outline_rounded, label: item.whyBetter),
+      if (compared != null)
+        _InfoRow(
+          icon: Icons.sell_rounded,
+          label: '$compared · ${widget.originalName ?? 'your product'} is ≈ ${formatInr(widget.originalPriceInr!)}',
         ),
-      _InfoRow(
-        icon: item.concernCount == 0 ? Icons.verified_rounded : Icons.flag_rounded,
-        label: item.concernLabel,
-      ),
-      if (item.priceLabel != null) _InfoRow(icon: Icons.sell_rounded, label: 'Around ${item.priceLabel}'),
-      if (item.category != null) _InfoRow(icon: Icons.category_rounded, label: item.category!),
-      if (item.highlights.isNotEmpty) const _SectionLabel('Why it\'s a better pick'),
-      for (final h in item.highlights) _InfoRow(icon: Icons.check_rounded, label: h),
+      if (item.size != null) _InfoRow(icon: Icons.straighten_rounded, label: 'Size: ${item.size}'),
+      if (item.avoids.isNotEmpty) const _SectionLabel('Avoids these flagged ingredients from your product'),
+      for (final a in item.avoids) _InfoRow(icon: Icons.block_rounded, label: a),
     ];
   }
 
@@ -126,6 +123,17 @@ class _AlternativeDetailPageState extends State<AlternativeDetailPage> with Sing
     );
   }
 
+  Widget _price(bool reduceMotion) {
+    final price = widget.item.priceInr;
+    if (price == null || reduceMotion) return AltPriceText(label: widget.item.priceLabel, height: 84.h);
+    return TweenAnimationBuilder<int>(
+      tween: IntTween(begin: 0, end: price),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, _) => AltPriceText(label: '≈ ${formatInr(v)}', height: 84.h),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
@@ -140,7 +148,7 @@ class _AlternativeDetailPageState extends State<AlternativeDetailPage> with Sing
           children: [
             Positioned.fill(
               child: Hero(
-                tag: altCardHeroTag(item.barcode),
+                tag: altCardHeroTag(item.id),
                 flightShuttleBuilder: altCardFlightShuttle(palette),
                 child: AlternativeCardBackground(palette: palette, radius: 0),
               ),
@@ -165,7 +173,6 @@ class _AlternativeDetailPageState extends State<AlternativeDetailPage> with Sing
                           ),
                         ),
                         const Spacer(),
-                        AltThumb(url: item.imageUrl, size: 42.r),
                       ],
                     ),
                   ),
@@ -173,6 +180,10 @@ class _AlternativeDetailPageState extends State<AlternativeDetailPage> with Sing
                     child: ListView(
                       padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 24.h),
                       children: [
+                        if (item.imageUrl != null) ...[
+                          Center(child: AltThumb(url: item.imageUrl, size: 150.r)),
+                          SizedBox(height: 18.h),
+                        ],
                         Text(
                           item.brand,
                           style: TextStyle(color: _ink, fontSize: 15.sp, fontWeight: FontWeight.w800),
@@ -183,38 +194,17 @@ class _AlternativeDetailPageState extends State<AlternativeDetailPage> with Sing
                           style: TextStyle(color: _ink, fontSize: 24.sp, fontWeight: FontWeight.w800, height: 1.2),
                         ),
                         SizedBox(height: 22.h),
-                        Center(
-                          child: Hero(
-                            tag: altScoreHeroTag(item.barcode),
-                            child: item.overallScore == null || reduceMotion
-                                ? AltScoreText(score: item.overallScore, height: 110.h)
-                                : TweenAnimationBuilder<int>(
-                                    tween: IntTween(begin: 0, end: item.overallScore!),
-                                    duration: const Duration(milliseconds: 800),
-                                    curve: Curves.easeOutCubic,
-                                    builder: (_, v, _) => AltScoreText(score: v, height: 110.h),
-                                  ),
-                          ),
-                        ),
+                        Center(child: Hero(tag: altPriceHeroTag(item.id), child: _price(reduceMotion))),
                         SizedBox(height: 10.h),
-                        Center(child: AltVerdictChip(verdict: item.verdict)),
+                        const Center(child: AltAiChip()),
                         SizedBox(height: 28.h),
                         for (var i = 0; i < _rows.length; i++) _animatedRow(i),
                         SizedBox(height: 8.h),
                         Text(
-                          'Scores come from our ingredient database. Always check the label before buying.',
+                          widget.disclaimer,
                           style: TextStyle(color: _ink.withValues(alpha: 0.6), fontSize: 11.sp, height: 1.4),
                         ),
                       ],
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 8.h),
-                    child: _DarkButton(
-                      label: 'View full analysis',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(builder: (_) => ProductDetailPage(barcode: item.barcode)),
-                      ),
                     ),
                   ),
                 ],
@@ -222,85 +212,6 @@ class _AlternativeDetailPageState extends State<AlternativeDetailPage> with Sing
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Solid dark pill: the emerald PrimaryButton clashes with the bright card
-/// colours, so the detail screen uses ink instead.
-class _DarkButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _DarkButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: _ink,
-      borderRadius: BorderRadius.circular(32.r),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(32.r),
-        onTap: onTap,
-        child: SizedBox(
-          width: double.infinity,
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 16.h),
-            child: Center(
-              child: Text(
-                label,
-                style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ComparisonRow extends StatelessWidget {
-  final String? originalName;
-  final int originalScore;
-  final int score;
-  final int? gain;
-
-  const _ComparisonRow({this.originalName, required this.originalScore, required this.score, this.gain});
-
-  @override
-  Widget build(BuildContext context) {
-    return _RowShell(
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  originalName ?? 'Your scan',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: _ink.withValues(alpha: 0.6), fontSize: 12.sp),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  '$originalScore → $score',
-                  style: TextStyle(color: _ink, fontSize: 18.sp, fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-          ),
-          if (gain != null)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-              decoration: BoxDecoration(color: _ink, borderRadius: BorderRadius.circular(14.r)),
-              child: Text(
-                '+$gain pts',
-                style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w800),
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -316,11 +227,12 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return _RowShell(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: _ink, size: 18.r),
           SizedBox(width: 12.w),
           Expanded(
-            child: Text(label, style: TextStyle(color: _ink, fontSize: 14.sp, fontWeight: FontWeight.w600)),
+            child: Text(label, style: TextStyle(color: _ink, fontSize: 14.sp, fontWeight: FontWeight.w600, height: 1.3)),
           ),
         ],
       ),

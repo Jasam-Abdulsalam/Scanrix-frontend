@@ -1,42 +1,64 @@
 import 'package:equatable/equatable.dart';
 
-/// One suggested alternative to a scanned product.
+/// One AI-suggested alternative to a scanned product (`POST /ai/alternatives`).
 ///
-/// PROVISIONAL shape: the backend endpoint doesn't exist yet, so these fields
-/// are the frontend's proposal (see `AlternativeProductModel` for the JSON
-/// keys). Adjust both once the real contract lands.
+/// UNVERIFIED: the name, size, price and [avoids] come from the AI, not from
+/// Scanrix's database, so there is no Scanrix score or barcode. The UI must
+/// always label these as AI suggestions.
 ///
-/// [verdict] uses the same vocabulary as `ProductEntity.verdict`
-/// (`safe` | `caution` | `avoid` | `unknown`).
-/// [highlights] are short "why it's better" lines, e.g. "Fragrance-free".
+/// [priceInr] is an approximate MRP. [avoids] lists flagged ingredients of the
+/// scanned product that this one avoids (the backend keeps only real ones).
 class AlternativeProductEntity extends Equatable {
-  final String barcode;
   final String name;
   final String brand;
-  final String? category;
+  final String? size;
+  final int? priceInr;
+  final String whyBetter;
+  final List<String> avoids;
+
+  /// Product photo found by the backend (Open Food/Beauty Facts or image
+  /// search), https; null = show the icon. May occasionally be a close
+  /// variant of the product (search by name).
   final String? imageUrl;
-  final int? overallScore;
-  final String verdict;
-  final int concernCount;
-  final List<String> highlights;
-  final double? price;
-  final String? currency;
 
   const AlternativeProductEntity({
-    required this.barcode,
     required this.name,
     required this.brand,
-    this.category,
+    this.size,
+    this.priceInr,
+    required this.whyBetter,
+    this.avoids = const [],
     this.imageUrl,
-    this.overallScore,
-    required this.verdict,
-    this.concernCount = 0,
-    this.highlights = const [],
-    this.price,
-    this.currency,
+  });
+
+  /// Stable identity within one result (used for Hero tags and list keys).
+  String get id => '$brand|$name';
+
+  @override
+  List<Object?> get props => [name, brand, size, priceInr, whyBetter, avoids, imageUrl];
+}
+
+/// The whole answer for one scanned product.
+///
+/// [alternatives] may be empty: the AI found no alternative it was confident
+/// about. [cached] = an answer that already existed (no credit used).
+class AlternativesResult extends Equatable {
+  final String productType;
+  final int? originalPriceInr;
+  final List<AlternativeProductEntity> alternatives;
+  final bool cached;
+  final int? creditsRemaining;
+  final String disclaimer;
+
+  const AlternativesResult({
+    required this.productType,
+    this.originalPriceInr,
+    this.alternatives = const [],
+    this.cached = false,
+    this.creditsRemaining,
+    required this.disclaimer,
   });
 
   @override
-  List<Object?> get props =>
-      [barcode, name, brand, category, imageUrl, overallScore, verdict, concernCount, highlights, price, currency];
+  List<Object?> get props => [productType, originalPriceInr, alternatives, cached, creditsRemaining, disclaimer];
 }

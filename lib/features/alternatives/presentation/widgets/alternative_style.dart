@@ -4,8 +4,23 @@ import '../../domain/entities/alternative_product_entity.dart';
 
 /// Hero tags shared by the carousel card and the detail screen. Kept in one
 /// place so the two ends can never drift apart.
-String altCardHeroTag(String barcode) => 'alt-card-$barcode';
-String altScoreHeroTag(String barcode) => 'alt-score-$barcode';
+String altCardHeroTag(String id) => 'alt-card-$id';
+String altPriceHeroTag(String id) => 'alt-price-$id';
+
+/// "₹1,299" style rupee amount (Indian digit grouping), without the "≈".
+String formatInr(int amount) {
+  final digits = amount.toString();
+  if (digits.length <= 3) return '₹$digits';
+  final last3 = digits.substring(digits.length - 3);
+  var rest = digits.substring(0, digits.length - 3);
+  final groups = <String>[];
+  while (rest.length > 2) {
+    groups.insert(0, rest.substring(rest.length - 2));
+    rest = rest.substring(0, rest.length - 2);
+  }
+  if (rest.isNotEmpty) groups.insert(0, rest);
+  return '₹${groups.join(',')},$last3';
+}
 
 /// Bright card colours: a radial glow, light in the middle and deeper at the
 /// edges. Every palette is light enough for the dark [ink] text to read on.
@@ -46,37 +61,27 @@ class AltPalette {
 AltPalette altPaletteAt(int index) => AltPalette.all[index % AltPalette.all.length];
 
 /// Presentation-only derivations for an alternative (labels), so the entity
-/// stays free of UI concerns.
+/// stays free of UI concerns. Prices are AI estimates, so always "≈".
 extension AlternativeStyle on AlternativeProductEntity {
+  /// "≈ ₹349"; null when the AI gave no price.
+  String? get priceLabel => priceInr == null ? null : '≈ ${formatInr(priceInr!)}';
 
-  /// "₹399", "$3.99"; null when there is no price.
-  String? get priceLabel {
-    final p = price;
-    if (p == null) return null;
-    final amount = p == p.roundToDouble() ? p.toStringAsFixed(0) : p.toStringAsFixed(2);
-    final symbol = switch (currency?.toUpperCase()) {
-      'INR' => '₹',
-      'USD' => r'$',
-      'EUR' => '€',
-      'GBP' => '£',
-      null => '',
-      final other => '$other ',
-    };
-    return '$symbol$amount';
+  /// How the price compares with the scanned product's (both AI estimates):
+  /// "Cheaper than yours", "Similar price", "≈ 1.6× yours"; null when either
+  /// price is unknown.
+  String? priceComparedTo(int? originalPriceInr) {
+    final mine = priceInr;
+    if (mine == null || originalPriceInr == null || originalPriceInr <= 0) return null;
+    final ratio = mine / originalPriceInr;
+    if (ratio < 0.9) return 'Cheaper than yours';
+    if (ratio <= 1.1) return 'Similar price';
+    return '≈ ${ratio.toStringAsFixed(1)}× yours';
   }
 
-  String get concernLabel => switch (concernCount) {
-        0 => 'No flagged ingredients',
-        1 => '1 flagged ingredient',
-        final n => '$n flagged ingredients',
+  /// "Avoids 2 flagged ingredients"; null when it avoids none we know of.
+  String? get avoidsLabel => switch (avoids.length) {
+        0 => null,
+        1 => 'Avoids 1 flagged ingredient',
+        final n => 'Avoids $n flagged ingredients',
       };
-
-  /// How many points better than the scanned product; null when either score
-  /// is missing or this one isn't actually higher.
-  int? scoreGainOver(int? originalScore) {
-    final mine = overallScore;
-    if (mine == null || originalScore == null) return null;
-    final gain = mine - originalScore;
-    return gain > 0 ? gain : null;
-  }
 }

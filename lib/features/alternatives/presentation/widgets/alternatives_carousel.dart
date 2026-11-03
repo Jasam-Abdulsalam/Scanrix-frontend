@@ -31,7 +31,9 @@ import 'tap_ring_painter.dart';
 /// the controllers, so scrolling never calls setState.
 class AlternativesCarousel extends StatefulWidget {
   final List<AlternativeProductEntity> items;
-  final int? originalScore;
+
+  /// The scanned product's approximate price, to compare each card's price against.
+  final int? originalPriceInr;
 
   /// Opens the detail screen; the carousel waits for it to return before
   /// accepting another open.
@@ -45,7 +47,7 @@ class AlternativesCarousel extends StatefulWidget {
     super.key,
     required this.items,
     required this.onOpen,
-    this.originalScore,
+    this.originalPriceInr,
     this.onActiveChanged,
   });
 
@@ -202,7 +204,7 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
                 itemBuilder: (context, i) => Semantics(
                   button: true,
                   label: '${widget.items[i].brand} ${widget.items[i].name}, '
-                      'score ${widget.items[i].overallScore ?? 'unknown'}. Tap to view details.',
+                      '${widget.items[i].priceLabel ?? 'price unknown'}, AI suggestion. Tap to view details.',
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTapUp: (d) => _onTap(i, d),
@@ -262,7 +264,7 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
       ..scaleByDouble(scale, scale, 1, 1);
 
     return Positioned(
-      key: ValueKey(widget.items[index].barcode),
+      key: ValueKey(widget.items[index].id),
       left: center.dx - cardWidth / 2,
       top: center.dy - cardHeight / 2,
       width: cardWidth,
@@ -276,7 +278,7 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
             child: AlternativeCard(
               item: widget.items[index],
               palette: altPaletteAt(index),
-              originalScore: widget.originalScore,
+              originalPriceInr: widget.originalPriceInr,
             ),
           ),
         ),

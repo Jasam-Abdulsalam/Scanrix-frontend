@@ -3,36 +3,35 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../../../core/constants/api_constants.dart';
-import '../../../products/presentation/widgets/analysis_result_view.dart' show VerdictDisplay;
 import '../../domain/entities/alternative_product_entity.dart';
 import 'alternative_style.dart';
 
 const _ink = AltPalette.ink;
 
-/// One wheel card: brand + name top-left, thumbnail top-right, the big score
-/// in the middle, then the verdict and a footer with the score gain over the
-/// scanned product and the price. Dark text on a bright radial gradient.
+/// One wheel card: brand + name top-left, the product photo top-right, the
+/// approximate price in the middle with the size under it, an "AI suggestion"
+/// chip, then a footer with what it avoids and how its price compares.
+/// Dark text on a bright radial gradient.
 ///
-/// The gradient background and the score are two sibling [Hero]s (Heroes can't
+/// The gradient background and the price are two sibling [Hero]s (Heroes can't
 /// nest), so on tap the card grows into the detail screen's background while
-/// the score flies to its new spot.
+/// the price flies to its new spot.
 class AlternativeCard extends StatelessWidget {
   final AlternativeProductEntity item;
   final AltPalette palette;
-  final int? originalScore;
+  final int? originalPriceInr;
 
-  const AlternativeCard({super.key, required this.item, required this.palette, this.originalScore});
+  const AlternativeCard({super.key, required this.item, required this.palette, this.originalPriceInr});
 
   @override
   Widget build(BuildContext context) {
-    final gain = item.scoreGainOver(originalScore);
-    final price = item.priceLabel;
+    final avoids = item.avoidsLabel;
+    final compared = item.priceComparedTo(originalPriceInr);
     return Stack(
       children: [
         Positioned.fill(
           child: Hero(
-            tag: altCardHeroTag(item.barcode),
+            tag: altCardHeroTag(item.id),
             flightShuttleBuilder: altCardFlightShuttle(palette),
             child: AlternativeCardBackground(palette: palette, radius: 28.r),
           ),
@@ -71,37 +70,43 @@ class AlternativeCard extends StatelessWidget {
                     ),
                   ),
                   SizedBox(width: 10.w),
-                  AltThumb(url: item.imageUrl, size: 38.r),
+                  AltThumb(url: item.imageUrl, size: 56.r),
                 ],
               ),
               const Spacer(),
               Center(
                 child: Hero(
-                  tag: altScoreHeroTag(item.barcode),
-                  child: AltScoreText(score: item.overallScore, height: 72.h),
+                  tag: altPriceHeroTag(item.id),
+                  child: AltPriceText(label: item.priceLabel, height: 56.h),
                 ),
               ),
-              SizedBox(height: 8.h),
-              Center(child: AltVerdictChip(verdict: item.verdict)),
+              if (item.size != null)
+                Center(
+                  child: Text(
+                    item.size!,
+                    style: TextStyle(color: _ink.withValues(alpha: 0.55), fontSize: 12.sp, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              SizedBox(height: 10.h),
+              const Center(child: AltAiChip()),
               const Spacer(),
               Row(
                 children: [
-                  if (gain != null)
-                    Flexible(child: _FooterPill(icon: Icons.trending_up_rounded, label: '+$gain vs. yours'))
-                  else
-                    Flexible(
-                      child: Text(
-                        item.concernLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: _ink.withValues(alpha: 0.6), fontSize: 11.sp),
-                      ),
-                    ),
-                  if (price != null) ...[
-                    const Spacer(),
+                  Flexible(
+                    child: avoids != null
+                        ? _FooterPill(icon: Icons.block_rounded, label: avoids)
+                        : Text(
+                            item.whyBetter,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: _ink.withValues(alpha: 0.65), fontSize: 11.sp),
+                          ),
+                  ),
+                  if (compared != null) ...[
+                    SizedBox(width: 8.w),
                     Text(
-                      price,
-                      style: TextStyle(color: _ink, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                      compared,
+                      style: TextStyle(color: _ink, fontSize: 11.sp, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ],
@@ -150,13 +155,13 @@ HeroFlightShuttleBuilder altCardFlightShuttle(AltPalette palette) {
   };
 }
 
-/// "92 /100", scaled to fit [height] so the Hero flight between the small card
-/// and the big detail header stays smooth.
-class AltScoreText extends StatelessWidget {
-  final int? score;
+/// "≈ ₹349" (or "Price unknown"), scaled to fit [height] so the Hero flight
+/// between the small card and the big detail header stays smooth.
+class AltPriceText extends StatelessWidget {
+  final String? label;
   final double height;
 
-  const AltScoreText({super.key, required this.score, required this.height});
+  const AltPriceText({super.key, required this.label, required this.height});
 
   @override
   Widget build(BuildContext context) {
@@ -166,19 +171,14 @@ class AltScoreText extends StatelessWidget {
       child: SizedBox(
         height: height,
         child: FittedBox(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                score?.toString() ?? '--',
-                style: TextStyle(color: _ink, fontSize: 64.sp, fontWeight: FontWeight.w900, height: 1),
-              ),
-              Text(
-                '/100',
-                style: TextStyle(color: _ink.withValues(alpha: 0.5), fontSize: 16.sp, fontWeight: FontWeight.w700),
-              ),
-            ],
+          child: Text(
+            label ?? 'Price unknown',
+            style: TextStyle(
+              color: label == null ? _ink.withValues(alpha: 0.5) : _ink,
+              fontSize: label == null ? 22.sp : 48.sp,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
           ),
         ),
       ),
@@ -186,28 +186,26 @@ class AltScoreText extends StatelessWidget {
   }
 }
 
-class AltVerdictChip extends StatelessWidget {
-  final String verdict;
-
-  const AltVerdictChip({super.key, required this.verdict});
+/// Always shown: these come from the AI, not from Scanrix's database.
+class AltAiChip extends StatelessWidget {
+  const AltAiChip({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
       decoration: BoxDecoration(
-        // Near-white chip: the verdict colour reads on every palette.
         color: Colors.white.withValues(alpha: 0.75),
         borderRadius: BorderRadius.circular(20.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(verdict.verdictIcon, color: _verdictInk(verdict), size: 14.r),
+          Icon(Icons.auto_awesome_rounded, color: _ink, size: 13.r),
           SizedBox(width: 5.w),
           Flexible(
             child: Text(
-              verdict.verdictLabel,
+              'AI suggestion',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: _ink, fontSize: 11.sp, fontWeight: FontWeight.w700),
@@ -217,34 +215,38 @@ class AltVerdictChip extends StatelessWidget {
       ),
     );
   }
-
-  /// Darker shades of the verdict colours: the neon ones wash out on white.
-  static Color _verdictInk(String verdict) => switch (verdict) {
-        'safe' => const Color(0xFF0E9F62),
-        'caution' => const Color(0xFFC77F00),
-        'avoid' => const Color(0xFFD13A3A),
-        _ => verdict.verdictColor,
-      };
 }
 
+/// The product photo on a white rounded tile (packs are usually shot on white),
+/// or the product icon when there is no photo or it fails to load.
 class AltThumb extends StatelessWidget {
   final String? url;
   final double size;
 
-  const AltThumb({super.key, required this.url, required this.size});
+  const AltThumb({super.key, this.url, required this.size});
 
   @override
   Widget build(BuildContext context) {
-    final resolved = ApiConstants.resolveMediaUrl(url);
-    final placeholder = Icon(Icons.inventory_2_outlined, color: _ink.withValues(alpha: 0.7), size: size * 0.5);
+    final icon = Icon(Icons.inventory_2_outlined, color: _ink.withValues(alpha: 0.7), size: size * 0.45);
     return Container(
       width: size,
       height: size,
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.55), shape: BoxShape.circle),
-      child: resolved == null
-          ? placeholder
-          : Image.network(resolved, fit: BoxFit.cover, errorBuilder: (_, _, _) => placeholder),
+      padding: EdgeInsets.all(size * 0.08),
+      decoration: BoxDecoration(
+        color: url == null ? Colors.white.withValues(alpha: 0.55) : Colors.white,
+        borderRadius: BorderRadius.circular(size * 0.24),
+      ),
+      child: url == null
+          ? icon
+          : Image.network(
+              url!,
+              fit: BoxFit.contain,
+              // Decode at display size, not the shop's 2000 px original.
+              cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+              errorBuilder: (_, _, _) => icon,
+              loadingBuilder: (_, child, progress) => progress == null ? child : Center(child: icon),
+            ),
     );
   }
 }

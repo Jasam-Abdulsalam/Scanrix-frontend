@@ -159,7 +159,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     builder: (_) => AlternativesPage(
                       barcode: product.barcode,
                       productName: product.name,
-                      originalScore: product.overallScore,
                     ),
                   ),
                 ),
