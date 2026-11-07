@@ -23,6 +23,8 @@ import '../../features/history/presentation/bloc/history_bloc.dart';
 import '../../features/history/presentation/bloc/scan_count_cubit.dart';
 import '../../features/alternatives/domain/usecases/get_alternatives_usecase.dart';
 import '../../features/alternatives/presentation/bloc/alternatives_bloc.dart';
+import '../../features/natural_remedy/domain/usecases/get_natural_remedy_usecase.dart';
+import '../../features/natural_remedy/presentation/bloc/natural_remedy_bloc.dart';
 import '../../features/products/domain/usecases/analyze_with_ai_usecase.dart';
 import '../../features/products/domain/usecases/get_ai_credits_usecase.dart';
 import '../../features/products/domain/usecases/get_product_usecase.dart';
@@ -110,6 +112,12 @@ Future<void> init() async {
   // alternatives: POST /ai/alternatives, 1 weekly credit unless already saved.
   sl.registerFactory(() => AlternativesBloc(getAlternativesUseCase: sl()));
   sl.registerLazySingleton(() => GetAlternativesUseCase(apiClient: sl()));
+
+  // ---------------- Natural remedy ----------------
+  // Homemade swaps for cosmetics: POST /ai/natural-remedy, 1 weekly credit
+  // unless already saved. One bloc per remedy screen.
+  sl.registerFactory(() => NaturalRemedyBloc(getNaturalRemedyUseCase: sl()));
+  sl.registerLazySingleton(() => GetNaturalRemedyUseCase(apiClient: sl()));
 
   // ---------------- Scan ----------------
   sl.registerFactory(

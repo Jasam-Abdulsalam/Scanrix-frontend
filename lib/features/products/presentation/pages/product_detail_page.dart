@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/toast.dart';
 import '../../../alternatives/presentation/pages/alternatives_page.dart';
 import '../../../favorites/presentation/bloc/favorites_bloc.dart';
+import '../../../natural_remedy/presentation/widgets/natural_remedy_card.dart';
 import '../../../favorites/presentation/bloc/favorites_event.dart';
 import '../../../favorites/presentation/bloc/favorites_state.dart';
 import '../../domain/entities/product_entity.dart';
@@ -142,6 +143,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   verdict: product.verdict,
                   initial: product.aiAnalysis,
                 ),
+                naturalRemedySection: product.category == 'cosmetic'
+                    ? NaturalRemedyCard(request: AiAnalysisRequest.barcode(product.barcode))
+                    : null,
                 ingredients: product.ingredients,
                 productName: product.name,
                 productImageUrl: product.imageUrl,

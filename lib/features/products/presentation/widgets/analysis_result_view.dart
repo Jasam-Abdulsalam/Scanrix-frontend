@@ -69,6 +69,9 @@ class AnalysisResultView extends StatefulWidget {
   final String? summary;
   final SafetyEngine? safetyEngine;
   final Widget? aiSection;
+
+  /// "Natural option" entry for cosmetics (the caller decides; null = none).
+  final Widget? naturalRemedySection;
   final List<IngredientEntity> ingredients;
   final String? productName;
   final String? productImageUrl;
@@ -89,6 +92,7 @@ class AnalysisResultView extends StatefulWidget {
     required this.summary,
     this.safetyEngine,
     this.aiSection,
+    this.naturalRemedySection,
     this.ingredients = const [],
     this.productName,
     this.productImageUrl,
@@ -176,6 +180,7 @@ class _AnalysisResultViewState extends State<AnalysisResultView> with SingleTick
       else
         _LegacyRows(ingredients: w.ingredients, isCosmetic: isCosmetic, productName: w.productName, skinType: w.skinType),
       if (w.aiSection != null) w.aiSection!,
+      if (w.naturalRemedySection != null) w.naturalRemedySection!,
       if (w.safetyEngine != null) SafetyDisclaimer(text: w.safetyEngine!.disclaimer),
     ];
 

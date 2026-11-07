@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../products/domain/entities/ai_analysis_entity.dart';
 import '../../../products/presentation/widgets/ai_verdict_section.dart';
+import '../../../natural_remedy/presentation/widgets/natural_remedy_card.dart';
 import '../../../products/presentation/widgets/analysis_result_view.dart';
 import '../../domain/entities/text_analysis_entity.dart';
 import '../widgets/scan_category.dart';
@@ -47,6 +48,9 @@ class IngredientAnalysisResultPage extends StatelessWidget {
                 engine: analysis.safetyEngine,
                 verdict: analysis.verdict,
               ),
+        naturalRemedySection: category == ScanCategory.cosmetics && ingredientsText.trim().length >= 5
+            ? NaturalRemedyCard(request: AiAnalysisRequest.text(ingredientsText, category: category.backendValue))
+            : null,
         // No fallbacks: without a real name/photo this is a label scan, and the
         // view shows "Label scan" instead of a fake product card.
         productName: productName,

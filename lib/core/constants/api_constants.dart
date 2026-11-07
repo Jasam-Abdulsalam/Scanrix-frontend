@@ -30,6 +30,7 @@ class ApiConstants {
   static const String aiAnalyzeProduct = '/ai/analyze-product';
   static const String aiCredits = '/ai/credits';
   static const String aiAlternatives = '/ai/alternatives';
+  static const String aiNaturalRemedy = '/ai/natural-remedy';
 
   // history
   static const String history = '/history/';
