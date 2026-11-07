@@ -12,6 +12,7 @@ import '../bloc/ai_analysis_state.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/bold_card.dart';
 import '../pages/ai_verdict_page.dart';
+import 'ai_look.dart';
 import 'ai_verdict_style.dart';
 
 /// Below this share of recognised ingredients our database result is "weak"
@@ -133,7 +134,7 @@ class _LoadingRow extends StatelessWidget {
         child: Center(
           child: SizedBox.square(
             dimension: 20.r,
-            child: CircularProgressIndicator(strokeWidth: 2.5, color: boldAccent(context)),
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: kAiViolet),
           ),
         ),
       ),
@@ -166,7 +167,7 @@ class _RowShell extends StatelessWidget {
         HapticFeedback.selectionClick();
         onTap();
       },
-      child: BoldCard(
+      child: AiCardShell(
         padding: EdgeInsets.fromLTRB(14.w, 12.h, 12.w, 12.h),
         child: Row(
           children: [
@@ -183,7 +184,7 @@ class _RowShell extends StatelessWidget {
               ),
             ),
             SizedBox(width: 10.w),
-            CircleIcon(icon: Icons.arrow_forward_rounded, background: boldAccent(context), foreground: kOnAccent, size: 38.r),
+            CircleIcon(icon: Icons.arrow_forward_rounded, background: kAiViolet, foreground: kOnAccent, size: 38.r),
           ],
         ),
       ),
@@ -204,11 +205,11 @@ class _OfferCard extends StatelessWidget {
     final noCredits = credits != null && credits!.remaining <= 0;
     final e = engine;
     final known = e != null && e.totalCount > 0 ? 'Only ${e.recognisedCount} of ${e.totalCount} known' : 'Little data';
-    return BoldCard(
+    return AiCardShell(
       padding: EdgeInsets.fromLTRB(14.w, 12.h, 12.w, 12.h),
       child: Row(
         children: [
-          IconTile(icon: Icons.psychology_rounded, color: boldAccent(context)),
+          IconTile(icon: Icons.auto_awesome_rounded, color: kAiViolet),
           SizedBox(width: 12.w),
           Expanded(
             child: Column(
@@ -256,7 +257,7 @@ class _FailureCard extends StatelessWidget {
               padding: EdgeInsets.only(top: 12.h),
               child: TextButton(
                 onPressed: onRetry,
-                style: TextButton.styleFrom(foregroundColor: boldAccent(context)),
+                style: TextButton.styleFrom(foregroundColor: kAiViolet),
                 child: const Text('Try again'),
               ),
             )
@@ -274,13 +275,13 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BoldCard(
+    return AiCardShell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              IconTile(icon: Icons.psychology_rounded, color: context.colors.secondaryText, size: 30.r),
+              IconTile(icon: Icons.auto_awesome_rounded, color: context.colors.secondaryText, size: 30.r),
               SizedBox(width: 10.w),
               Expanded(
                 child: Text(
@@ -319,7 +320,7 @@ class _AiButton extends StatelessWidget {
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
           alignment: Alignment.center,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20.r), color: boldAccent(context)),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20.r), gradient: kAiGradient),
           child: Text(
             label,
             style: TextStyle(color: kOnAccent, fontSize: 12.5.sp, fontWeight: FontWeight.w800),

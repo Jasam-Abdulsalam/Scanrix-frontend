@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
+import 'ai_look.dart';
 
 /// Full-screen "AI is working" state: an orb that draws ingredient dots into
 /// its core, plus status lines that step forward (once, no looping back) so
@@ -90,7 +91,7 @@ class _AiThinkingViewState extends State<AiThinkingView> {
               style: TextStyle(color: colors.secondaryText, fontSize: 13.sp, height: 1.4),
             ),
             SizedBox(height: 20.h),
-            _StepDots(count: AiThinkingView.steps.length, current: _step, color: colors.neonEmerald),
+            _StepDots(count: AiThinkingView.steps.length, current: _step, color: kAiViolet),
           ],
         ),
       ),
@@ -163,7 +164,7 @@ class _AiThinkingOrbState extends State<AiThinkingOrb> with SingleTickerProvider
     return RepaintBoundary(
       child: SizedBox.square(
         dimension: widget.size,
-        child: CustomPaint(painter: _OrbPainter(_c, context.colors.neonEmerald)),
+        child: CustomPaint(painter: _OrbPainter(_c, kAiViolet)),
       ),
     );
   }

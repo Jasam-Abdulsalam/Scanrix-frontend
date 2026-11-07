@@ -11,6 +11,7 @@ import '../../domain/entities/ai_analysis_entity.dart';
 import '../bloc/ai_analysis_bloc.dart';
 import '../bloc/ai_analysis_event.dart';
 import '../bloc/ai_analysis_state.dart';
+import '../widgets/ai_look.dart';
 import '../widgets/ai_thinking_view.dart';
 import '../widgets/ai_verdict_style.dart';
 import '../widgets/status_colors.dart';
@@ -96,7 +97,7 @@ class AiVerdictPage extends StatelessWidget {
   }
 }
 
-/// One-screen summary: a solid hero card with the verdict and score, the
+/// One-screen summary: the AI glow hero card with the verdict and score, the
 /// short summary, a three-column breakdown that opens the full lists in
 /// bottom sheets, and the biggest concern.
 class _ResultView extends StatefulWidget {
@@ -156,12 +157,13 @@ class _ResultViewState extends State<_ResultView> with SingleTickerProviderState
   Widget build(BuildContext context) {
     final colors = context.colors;
     final a = widget.analysis;
-    final accent = boldAccent(context);
+    // Violet, not the brand emerald: this screen must not look like the database result.
+    const accent = kAiViolet;
     final concerns = a.identifiedConcerns;
     final unidentified = a.unidentifiedIngredients;
 
     final sections = <Widget>[
-      _HeroCard(analysis: a, accent: accent, progress: _c),
+      AiGlowHeroCard(analysis: a, progress: _c),
       if (a.summary.isNotEmpty) _SummaryCard(text: a.summary, accent: accent),
       if (a.adjustedByDatabase)
         _Callout(
@@ -249,101 +251,6 @@ class _Reveal extends StatelessWidget {
         child: Transform.translate(offset: Offset(0, 12.h * (1 - anim.value)), child: child),
       ),
       child: child,
-    );
-  }
-}
-
-/// The one solid accent card: verdict, what it means, and the score ring.
-class _HeroCard extends StatelessWidget {
-  final AiAnalysis analysis;
-  final Color accent;
-  final Animation<double> progress;
-
-  const _HeroCard({required this.analysis, required this.accent, required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    final fill = CurvedAnimation(parent: progress, curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic));
-    // Status color (emerald / amber / red / grey) only ever sits on black here.
-    final status = analysis.verdict.color(context.colors);
-    // Rounded notch in the top edge, like the stacked cards in the references.
-    return ClipPath(
-      clipper: TopNotchClipper(radius: 28.r, notchWidth: 56.w, notchDepth: 7.h),
-      child: Container(
-        padding: EdgeInsets.fromLTRB(20.w, 16.h, 16.w, 20.h),
-        decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(28.r)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Flexible: large text sizes shrink the pill instead of overflowing the row.
-                Flexible(
-                  child: Container(
-                    padding: EdgeInsets.fromLTRB(9.w, 5.h, 11.w, 5.h),
-                    decoration: BoxDecoration(color: kOnAccent, borderRadius: BorderRadius.circular(20.r)),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 7.r,
-                          height: 7.r,
-                          decoration: BoxDecoration(color: status, shape: BoxShape.circle),
-                        ),
-                        SizedBox(width: 6.w),
-                        Flexible(
-                          child: Text(
-                            'AI estimate · unverified',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12.w),
-                CircleIcon(icon: analysis.verdict.icon, background: kOnAccent, foreground: status, size: 38.r),
-              ],
-            ),
-            SizedBox(height: 14.h),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        analysis.verdict.label,
-                        style: TextStyle(
-                          color: kOnAccent,
-                          fontSize: 26.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.8,
-                          height: 1.05,
-                        ),
-                      ),
-                      SizedBox(height: 8.h),
-                      Text(
-                        analysis.verdict.meaning,
-                        style: TextStyle(color: kOnAccent.withValues(alpha: 0.72), fontSize: 13.sp, height: 1.4),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 14.w),
-                AnimatedBuilder(
-                  animation: fill,
-                  builder: (_, _) => AccentRing(size: 92.r, score: analysis.score, fraction: fill.value),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -756,24 +663,7 @@ class _FailureView extends StatelessWidget {
             ),
             if (failure.retryable) ...[
               SizedBox(height: 24.h),
-              Pressable(
-                onTap: onRetry,
-                child: Container(
-                  padding: EdgeInsets.fromLTRB(22.w, 6.h, 6.w, 6.h),
-                  decoration: BoxDecoration(color: colors.neonEmerald, borderRadius: BorderRadius.circular(30.r)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Try again',
-                        style: TextStyle(color: kOnAccent, fontSize: 14.sp, fontWeight: FontWeight.w700),
-                      ),
-                      SizedBox(width: 12.w),
-                      CircleIcon(icon: Icons.refresh_rounded, background: kOnAccent, foreground: colors.neonEmerald, size: 36.r),
-                    ],
-                  ),
-                ),
-              ),
+              AiPillButton(label: 'Try again', icon: Icons.refresh_rounded, onTap: onRetry),
             ],
           ],
         ),
