@@ -168,7 +168,6 @@ void main() {
         home: Scaffold(
           body: AlternativesCarousel(
             items: const [_a, _b],
-            originalPriceInr: 400,
             onOpen: (item, _) async => opened.add(item.name),
           ),
         ),
@@ -177,8 +176,8 @@ void main() {
     await tester.pump();
     expect(find.text('Gentle Wash'), findsOneWidget);
     expect(find.text('≈ ₹299'), findsOneWidget);
-    expect(find.text('Cheaper than yours'), findsOneWidget);
-    expect(find.text('AI suggestion'), findsWidgets);
+    expect(find.text('Avoids 1 flagged ingredient'), findsOneWidget);
+    expect(find.text('AI Suggestion'), findsWidgets);
 
     final size = tester.getSize(find.byType(AlternativesCarousel));
     await tester.tapAt(Offset(size.width * 0.95, size.height * 0.4));

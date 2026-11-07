@@ -107,7 +107,6 @@ class _AlternativesViewState extends State<_AlternativesView> {
             Expanded(
               child: AlternativesCarousel(
                 items: result.alternatives,
-                originalPriceInr: result.originalPriceInr,
                 onActiveChanged: (i) => setState(() => _active = i),
                 onOpen: (item, palette) => openAlternativeDetail(
                   context,

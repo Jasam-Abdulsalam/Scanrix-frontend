@@ -32,8 +32,6 @@ import 'tap_ring_painter.dart';
 class AlternativesCarousel extends StatefulWidget {
   final List<AlternativeProductEntity> items;
 
-  /// The scanned product's approximate price, to compare each card's price against.
-  final int? originalPriceInr;
 
   /// Opens the detail screen; the carousel waits for it to return before
   /// accepting another open.
@@ -47,7 +45,6 @@ class AlternativesCarousel extends StatefulWidget {
     super.key,
     required this.items,
     required this.onOpen,
-    this.originalPriceInr,
     this.onActiveChanged,
   });
 
@@ -67,7 +64,10 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
   static const _dialRadiusFactor = 0.46;
 
   /// Centred card width relative to the carousel width.
-  static const _cardWidthFactor = 0.66;
+  static const _cardWidthFactor = 0.7;
+
+  /// Card height relative to its width (room for the photo panel + details).
+  static const _cardAspect = 1.45;
 
   /// Wheel turn per card (rad): a quarter turn, so the cards are spokes 90°
   /// apart. At rest the neighbours are off screen; halfway through a swap
@@ -159,7 +159,7 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
 
         // Cards centred in the space above the dial.
         final cardWidth = width * _cardWidthFactor;
-        final cardHeight = math.max(0.0, math.min(cardWidth * 1.3, dialTop - gap * 2));
+        final cardHeight = math.max(0.0, math.min(cardWidth * _cardAspect, dialTop - gap * 2));
         final cardCenterY = dialTop / 2;
 
         // The cards are spokes turning around the dial's centre.
@@ -278,7 +278,6 @@ class _AlternativesCarouselState extends State<AlternativesCarousel> with Ticker
             child: AlternativeCard(
               item: widget.items[index],
               palette: altPaletteAt(index),
-              originalPriceInr: widget.originalPriceInr,
             ),
           ),
         ),
