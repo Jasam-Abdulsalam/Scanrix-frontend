@@ -7,6 +7,7 @@ import '../../../../core/navigation/bottom_nav_navigation.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/quick_action_card.dart';
+import '../../../routine/presentation/pages/routine_page.dart';
 import '../../../favorites/presentation/pages/favorites_page.dart';
 
 /// Home tab content — rendered inside `MainShell`'s `IndexedStack`, which
@@ -41,11 +42,14 @@ class HomePage extends StatelessWidget {
                   SizedBox(height: 14.h),
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: QuickActionCard(
                           title: 'My Routine',
                           subtitle: 'Daily products',
                           imageAsset: 'assets/images/routine.png',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const RoutinePage()),
+                          ),
                         ),
                       ),
                       SizedBox(width: 14.w),

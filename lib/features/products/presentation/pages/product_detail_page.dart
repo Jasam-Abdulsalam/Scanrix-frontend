@@ -9,6 +9,11 @@ import '../../../../core/widgets/toast.dart';
 import '../../../alternatives/presentation/pages/alternatives_page.dart';
 import '../../../favorites/presentation/bloc/favorites_bloc.dart';
 import '../../../natural_remedy/presentation/widgets/natural_remedy_card.dart';
+import '../../../routine/domain/entities/routine_entity.dart';
+import '../../../routine/presentation/bloc/routine_bloc.dart';
+import '../../../routine/presentation/bloc/routine_event.dart';
+import '../../../routine/presentation/bloc/routine_state.dart';
+import '../../../routine/presentation/widgets/add_to_routine_sheet.dart';
 import '../../../favorites/presentation/bloc/favorites_event.dart';
 import '../../../favorites/presentation/bloc/favorites_state.dart';
 import '../../domain/entities/product_entity.dart';
@@ -47,6 +52,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     super.initState();
     context.read<ProductBloc>().add(ProductRequested(widget.barcode));
     context.read<FavoritesBloc>().add(const FavoritesBarcodesRequested()); // fills the heart
+    context.read<RoutineBloc>().add(const RoutineRequested(silent: true)); // "In routine" on the button
   }
 
   void _maybeStartPolling(ProductEntity product) {
@@ -132,37 +138,61 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   showToast(context, state.notice!, icon: Icons.error_outline_rounded);
                 }
               },
-              child: AnalysisResultView(
-                verdict: product.verdict,
-                overallScore: product.overallScore,
-                summary: product.summary,
-                safetyEngine: product.safetyEngine,
-                aiSection: AiVerdictSection(
-                  request: AiAnalysisRequest.barcode(product.barcode),
-                  engine: product.safetyEngine,
-                  verdict: product.verdict,
-                  initial: product.aiAnalysis,
-                ),
-                naturalRemedySection: product.category == 'cosmetic'
-                    ? NaturalRemedyCard(request: AiAnalysisRequest.barcode(product.barcode))
-                    : null,
-                ingredients: product.ingredients,
-                productName: product.name,
-                productImageUrl: product.imageUrl,
-                category: product.category,
-                brand: product.brand,
-                quantity: product.quantity,
-                isFavorite: isFavorite,
-                onFavorite: () {
-                  final bloc = context.read<FavoritesBloc>();
-                  bloc.add(isFavorite ? FavoriteRemoved(product.barcode) : FavoriteAdded(product.barcode));
-                },
-                onBack: () => Navigator.of(context).maybePop(),
-                onViewAlternatives: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => AlternativesPage(
-                      barcode: product.barcode,
-                      productName: product.name,
+              // "In routine" on the button rebuilds only when THIS product's routine state flips.
+              child: BlocSelector<RoutineBloc, RoutineState, bool>(
+                selector: (s) => s.routine.slotsOf(product.barcode).isNotEmpty,
+                builder: (context, inRoutine) => BlocListener<RoutineBloc, RoutineState>(
+                  listenWhen: (a, b) => b.notice != null && a.notice != b.notice,
+                  listener: (context, state) {
+                    if (ModalRoute.of(context)?.isCurrent ?? true) {
+                      showToast(context, state.notice!, icon: Icons.error_outline_rounded);
+                    }
+                  },
+                  child: AnalysisResultView(
+                    verdict: product.verdict,
+                    overallScore: product.overallScore,
+                    summary: product.summary,
+                    safetyEngine: product.safetyEngine,
+                    aiSection: AiVerdictSection(
+                      request: AiAnalysisRequest.barcode(product.barcode),
+                      engine: product.safetyEngine,
+                      verdict: product.verdict,
+                      initial: product.aiAnalysis,
+                    ),
+                    naturalRemedySection: product.category == 'cosmetic'
+                        ? NaturalRemedyCard(request: AiAnalysisRequest.barcode(product.barcode))
+                        : null,
+                    ingredients: product.ingredients,
+                    productName: product.name,
+                    productImageUrl: product.imageUrl,
+                    category: product.category,
+                    brand: product.brand,
+                    quantity: product.quantity,
+                    isFavorite: isFavorite,
+                    onFavorite: () {
+                      final bloc = context.read<FavoritesBloc>();
+                      bloc.add(isFavorite ? FavoriteRemoved(product.barcode) : FavoriteAdded(product.barcode));
+                    },
+                    onBack: () => Navigator.of(context).maybePop(),
+                    inRoutine: inRoutine,
+                    onAddToRoutine: () => showAddToRoutineSheet(
+                      context,
+                      RoutineItemEntity(
+                        barcode: product.barcode,
+                        name: product.name,
+                        brand: product.brand,
+                        imageUrl: product.imageUrl,
+                        verdict: product.verdict,
+                        overallScore: product.overallScore,
+                      ),
+                    ),
+                    onViewAlternatives: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => AlternativesPage(
+                          barcode: product.barcode,
+                          productName: product.name,
+                        ),
+                      ),
                     ),
                   ),
                 ),

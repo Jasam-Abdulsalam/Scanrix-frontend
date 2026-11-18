@@ -12,14 +12,16 @@ import 'package:scanrix_frontend/features/profile/presentation/widgets/profile_d
 import 'package:scanrix_frontend/features/profile/presentation/widgets/profile_header.dart';
 import 'package:scanrix_frontend/features/profile/presentation/widgets/settings.dart';
 
+import '../../../../core/navigation/signed_out.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
+import '../../../../core/widgets/toast.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../auth/presentation/pages/create_account_page.dart';
-import '../../../auth/presentation/pages/login_page.dart';
+import '../../../routine/reminders/reminders_cubit.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -29,13 +31,13 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  bool _reminders = false;
-
   @override
   void initState() {
     super.initState();
     context.read<AuthBloc>().add(const AuthCurrentUserRequested());
-    context.read<FavoritesBloc>().add(const FavoritesBarcodesRequested()); // for the Favorites count
+    context.read<FavoritesBloc>().add(
+      const FavoritesBarcodesRequested(),
+    ); // for the Favorites count
     context.read<ScanCountCubit>().refresh(); // for the Scans count
   }
 
@@ -103,13 +105,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _handleAuthState(BuildContext context, AuthState state) {
     if (state is AuthUnauthenticated) {
-      // Forget this account's saved products so the next one never sees them.
-      context.read<FavoritesBloc>().add(const FavoritesReset());
-      context.read<ScanCountCubit>().reset();
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-        (_) => false,
-      );
+      // Forgets this account's app-wide data, then goes to the login screen.
+      goToLoginSignedOut(context);
     }
     //   } else if (state is AuthFailure) {
     //     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
@@ -144,10 +141,14 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               // History can be edited there: re-read the number when coming back.
               onTap: () => Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => const HistoryPage(standalone: true)))
+                  .push(
+                    MaterialPageRoute(
+                      builder: (_) => const HistoryPage(standalone: true),
+                    ),
+                  )
                   .then((_) {
-                if (mounted) context.read<ScanCountCubit>().refresh();
-              }),
+                    if (mounted) context.read<ScanCountCubit>().refresh();
+                  }),
             ),
           ),
         ),
@@ -164,9 +165,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 color: context.colors.neonEmerald,
                 size: 18.r,
               ),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const FavoritesPage()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const FavoritesPage())),
             ),
           ),
         ),
@@ -194,13 +195,27 @@ class _ProfilePageState extends State<ProfilePage> {
           },
         ),
         const SettingsDivider(),
-        SettingsTile(
-          icon: Icons.alarm_rounded,
-          title: 'Reminders',
-          subtitle: 'Get notified for your routine',
-          trailing: SettingsSwitch(
-            value: _reminders,
-            onChanged: (val) => setState(() => _reminders = val),
+        // Same setting as the reminder card on the My Routine page (stored on this phone).
+        BlocConsumer<RemindersCubit, RemindersState>(
+          listenWhen: (a, b) => b.notice != null && a.notice != b.notice,
+          listener: (context, s) {
+            if (ModalRoute.of(context)?.isCurrent ?? true) {
+              showToast(
+                context,
+                s.notice!,
+                icon: Icons.notifications_off_outlined,
+              );
+            }
+          },
+          builder: (context, reminders) => SettingsTile(
+            icon: Icons.alarm_rounded,
+            title: 'Reminders',
+            subtitle: 'Get notified for your routine',
+            trailing: SettingsSwitch(
+              value: reminders.enabled,
+              onChanged: (val) =>
+                  context.read<RemindersCubit>().setEnabled(val),
+            ),
           ),
         ),
         const SettingsDivider(),
@@ -243,6 +258,5 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ],
     );
-  
-}
+  }
 }

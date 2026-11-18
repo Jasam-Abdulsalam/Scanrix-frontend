@@ -40,7 +40,16 @@ class ApiConstants {
   // favorites (saved products)
   static const String favorites = '/favorites/';
   static const String favoriteBarcodes = '/favorites/barcodes';
-  static String favorite(String barcode) => '/favorites/${Uri.encodeComponent(barcode)}';
+  static String favorite(String barcode) =>
+      '/favorites/${Uri.encodeComponent(barcode)}';
+
+  // my routine (morning / evening cosmetics)
+  static const String routine = '/routine/';
+  static String routineSlot(String slot) => '/routine/$slot';
+  static String routineStep(String slot, String barcode) =>
+      '/routine/$slot/${Uri.encodeComponent(barcode)}';
+  static String routineProductType(String barcode) =>
+      '/routine/product-type/${Uri.encodeComponent(barcode)}';
 
   /// The backend returns `photo_url` either as an absolute URL (e.g. a
   /// Google profile photo) or, for an uploaded photo, a path relative to

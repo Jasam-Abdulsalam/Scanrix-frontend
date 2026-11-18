@@ -101,3 +101,9 @@ class AuthCurrentUserRequested extends AuthEvent {
 class AuthDeleteAccountRequested extends AuthEvent {
   const AuthDeleteAccountRequested();
 }
+
+/// The backend rejected the saved token (expired or invalid): sign out
+/// locally. Added by [AuthBloc] itself from `ApiClient.sessionExpired`.
+class AuthSessionExpiryDetected extends AuthEvent {
+  const AuthSessionExpiryDetected();
+}

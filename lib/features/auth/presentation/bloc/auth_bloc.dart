@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -26,6 +28,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final GetCurrentUserUseCase getCurrentUserUseCase;
   final DeleteAccountUseCase deleteAccountUseCase;
   final ApiClient apiClient;
+  late final StreamSubscription<void> _sessionExpiredSub;
 
   AuthBloc({
     required this.loginUseCase,
@@ -47,6 +50,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthGoogleSignupCancelled>(_onGoogleSignupCancelled);
     on<AuthCurrentUserRequested>(_onCurrentUserRequested);
     on<AuthDeleteAccountRequested>(_onDeleteAccountRequested);
+    on<AuthSessionExpiryDetected>(_onSessionExpiryDetected);
+    _sessionExpiredSub = apiClient.sessionExpired.listen(
+      (_) => add(const AuthSessionExpiryDetected()),
+    );
+  }
+
+  @override
+  Future<void> close() async {
+    await _sessionExpiredSub.cancel();
+    return super.close();
+  }
+
+  Future<void> _onSessionExpiryDetected(
+    AuthSessionExpiryDetected event,
+    Emitter<AuthState> emit,
+  ) async {
+    await _clearLocalSession();
+    emit(AuthSessionExpired());
   }
 
   Future<void> _onLoginRequested(

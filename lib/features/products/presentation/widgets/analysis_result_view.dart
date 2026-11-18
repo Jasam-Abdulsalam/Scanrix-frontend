@@ -83,6 +83,9 @@ class AnalysisResultView extends StatefulWidget {
   final VoidCallback? onFavorite;
   final VoidCallback? onViewAlternatives;
   final VoidCallback? onAddToRoutine;
+
+  /// The product is already in My Routine: the button reads "In routine" (tapping it changes the slots).
+  final bool inRoutine;
   final bool isFavorite;
 
   const AnalysisResultView({
@@ -104,6 +107,7 @@ class AnalysisResultView extends StatefulWidget {
     this.onFavorite,
     this.onViewAlternatives,
     this.onAddToRoutine,
+    this.inRoutine = false,
     this.isFavorite = false,
   });
 
@@ -216,6 +220,7 @@ class _AnalysisResultViewState extends State<AnalysisResultView> with SingleTick
                 onViewAlternatives: w.onViewAlternatives,
                 onAddToRoutine: isCosmetic ? w.onAddToRoutine : null,
                 showRoutine: isCosmetic,
+                inRoutine: w.inRoutine,
               ),
             ),
           ],
@@ -273,8 +278,9 @@ class _BottomActions extends StatelessWidget {
   final VoidCallback? onViewAlternatives;
   final VoidCallback? onAddToRoutine;
   final bool showRoutine;
+  final bool inRoutine;
 
-  const _BottomActions({this.onViewAlternatives, this.onAddToRoutine, required this.showRoutine});
+  const _BottomActions({this.onViewAlternatives, this.onAddToRoutine, required this.showRoutine, this.inRoutine = false});
 
   @override
   Widget build(BuildContext context) {
@@ -304,9 +310,9 @@ class _BottomActions extends StatelessWidget {
           );
           if (!showRoutine) return alternatives;
           final routine = _ActionPill(
-            label: 'Add to routine',
-            semanticLabel: 'Add to My Routine',
-            icon: Icons.add_rounded,
+            label: inRoutine ? 'In routine' : 'Add to routine',
+            semanticLabel: inRoutine ? 'In My Routine. Change morning or evening' : 'Add to My Routine',
+            icon: inRoutine ? Icons.check_rounded : Icons.add_rounded,
             filled: false,
             onTap: onAddToRoutine ?? () => _comingSoon(context, 'My Routine'),
           );

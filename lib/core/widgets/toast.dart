@@ -5,9 +5,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../theme/app_theme_colors.dart';
 
+/// The toast currently on screen, if any: a new toast replaces it instead of
+/// stacking on top (e.g. "Added to your routine" followed by a failure).
+OverlayEntry? _current;
+
 /// Fire-and-forget glass toast: fades in, sits briefly, fades out on its
 /// own — unlike [ScaffoldMessenger]'s `SnackBar`, it doesn't queue, doesn't
 /// need a swipe to dismiss, and doesn't block the widgets underneath it.
+/// Only one is shown at a time; a newer one replaces the older immediately.
 void showToast(
   BuildContext context,
   String message, {
@@ -15,16 +20,26 @@ void showToast(
   Duration duration = const Duration(milliseconds: 1600),
 }) {
   final overlay = Overlay.of(context);
+  _removeCurrent();
   late final OverlayEntry entry;
   entry = OverlayEntry(
     builder: (context) => _ToastOverlay(
       message: message,
       icon: icon,
       duration: duration,
-      onDismissed: () => entry.remove(),
+      onDismissed: () {
+        if (identical(_current, entry)) _removeCurrent();
+      },
     ),
   );
+  _current = entry;
   overlay.insert(entry);
+}
+
+void _removeCurrent() {
+  final entry = _current;
+  _current = null;
+  if (entry != null && entry.mounted) entry.remove();
 }
 
 class _ToastOverlay extends StatefulWidget {
@@ -82,36 +97,46 @@ class _ToastOverlayState extends State<_ToastOverlay>
       right: 24.w,
       bottom: 140.h,
       child: IgnorePointer(
-        child: FadeTransition(
-          opacity: _opacity,
-          child: Align(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30.r),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(30.r),
-                    border: Border.all(
-                      color: colors.cardBorder.withValues(alpha: 0.6),
-                      width: 1,
+        // An overlay entry has no Material ancestor, so without this its Text
+        // falls back to Flutter's yellow-double-underline "missing Material" style.
+        child: Material(
+          type: MaterialType.transparency,
+          child: FadeTransition(
+            opacity: _opacity,
+            child: Align(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30.r),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 18.w,
+                      vertical: 12.h,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(widget.icon, color: Colors.white70, size: 16.r),
-                      SizedBox(width: 8.w),
-                      Flexible(
-                        child: Text(
-                          widget.message,
-                          style: TextStyle(color: Colors.white, fontSize: 13.sp),
-                        ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(30.r),
+                      border: Border.all(
+                        color: colors.cardBorder.withValues(alpha: 0.6),
+                        width: 1,
                       ),
-                    ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(widget.icon, color: Colors.white70, size: 16.r),
+                        SizedBox(width: 8.w),
+                        Flexible(
+                          child: Text(
+                            widget.message,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13.sp,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

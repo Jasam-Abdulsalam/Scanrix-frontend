@@ -18,6 +18,10 @@ class ApiClient {
 
   bool get isAuthenticated => dioClient.isAuthenticated;
 
+  /// Fires when the backend rejects the signed-in user's token (401): the
+  /// token is already cleared. See [DioClient.sessionExpired].
+  Stream<void> get sessionExpired => dioClient.sessionExpired;
+
   Future<dynamic> get(String path, {Map<String, dynamic>? queryParameters}) {
     return _send(() => dioClient.dio.getUri(_uri(path, queryParameters)));
   }
@@ -94,8 +98,8 @@ class ApiClient {
       final message = details != null
           ? (details['message']?.toString() ?? detail.toString())
           : detail != null
-              ? detail.toString()
-              : e.message ?? 'Request failed';
+          ? detail.toString()
+          : e.message ?? 'Request failed';
       throw ServerException(
         message: message,
         statusCode: e.response?.statusCode,

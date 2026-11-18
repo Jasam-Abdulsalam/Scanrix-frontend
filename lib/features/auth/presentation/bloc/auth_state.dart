@@ -55,6 +55,11 @@ class AuthFailure extends AuthState {
 
 class AuthUnauthenticated extends AuthState {}
 
+/// Signed out because the token expired or became invalid (not a user
+/// logout). Kept separate from [AuthUnauthenticated] so only `MainShell`
+/// handles it, with a "sign in again" notice.
+class AuthSessionExpired extends AuthState {}
+
 class AuthProfileCompleteSuccess extends AuthState {
   final UserEntity user;
 

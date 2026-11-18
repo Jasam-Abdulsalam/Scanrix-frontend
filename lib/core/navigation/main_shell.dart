@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/favorites/presentation/bloc/favorites_bloc.dart';
 import '../../features/favorites/presentation/bloc/favorites_event.dart';
 import '../../features/history/presentation/bloc/history_bloc.dart';
@@ -11,10 +13,14 @@ import '../../features/history/presentation/history_paging.dart';
 import '../../features/history/presentation/pages/history_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/routine/presentation/bloc/routine_bloc.dart';
+import '../../features/routine/presentation/bloc/routine_event.dart';
+import '../../features/routine/reminders/reminders_cubit.dart';
 import '../../features/search/presentation/pages/search_page.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'bottom_nav_navigation.dart';
+import 'signed_out.dart';
 
 /// Top-level tab shell: the single owner of the Scaffold, aurora
 /// background, and [BottomNavBar] shared by the four tabs. Keeps all four
@@ -54,6 +60,10 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     _navIndex = widget.initialIndex;
+    // Signed in (and DI is ready): start the reminders first, so they are listening when the routine
+    // loads, then load the routine (feeds "In routine" and the reminder text).
+    context.read<RemindersCubit>();
+    context.read<RoutineBloc>().add(const RoutineRequested(silent: true));
     _navIndexNotifier = ValueNotifier(_navIndex);
     _tabs = [
       HomePage(activeTabIndex: _navIndexNotifier),
@@ -80,6 +90,19 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Any signed-in screen sits on top of this shell, so this one listener covers them all: a
+    // request rejected with 401 (expired or invalid token) signs out and goes to the login screen.
+    return BlocListener<AuthBloc, AuthState>(
+      listenWhen: (_, state) => state is AuthSessionExpired,
+      listener: (context, _) => goToLoginSignedOut(
+        context,
+        notice: 'Your session has expired. Please sign in again.',
+      ),
+      child: _buildShell(context),
+    );
+  }
+
+  Widget _buildShell(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
@@ -105,12 +128,17 @@ class _MainShellState extends State<MainShell> {
                       // would be stale after a scan: refresh when History is selected.
                       if (index == 4) {
                         context.read<ScanCountCubit>().refresh();
-                        context.read<FavoritesBloc>().add(const FavoritesBarcodesRequested());
+                        context.read<FavoritesBloc>().add(
+                          const FavoritesBarcodesRequested(),
+                        );
                       }
                       if (index == 1) {
-                        context
-            .read<HistoryBloc>()
-            .add(HistoryRequested(limit: productListPageSize(context), silent: true));
+                        context.read<HistoryBloc>().add(
+                          HistoryRequested(
+                            limit: productListPageSize(context),
+                            silent: true,
+                          ),
+                        );
                       }
                     },
                     onScanPressed: () => handleScanPressed(context),

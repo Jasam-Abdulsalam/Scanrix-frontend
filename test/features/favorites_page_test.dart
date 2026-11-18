@@ -11,9 +11,11 @@ import 'package:scanrix_frontend/features/products/domain/entities/product_entit
 import 'package:scanrix_frontend/features/products/domain/usecases/get_product_usecase.dart';
 import 'package:scanrix_frontend/features/products/presentation/bloc/product_bloc.dart';
 import 'package:scanrix_frontend/features/products/presentation/pages/product_detail_page.dart';
+import 'package:scanrix_frontend/features/routine/presentation/bloc/routine_bloc.dart';
 
 import 'favorites_test_support.dart';
 import 'history_test_support.dart' show networkDown;
+import 'routine_test_support.dart';
 
 /// Fixed frames instead of `pumpAndSettle`: spinners/indicators never "settle".
 Future<void> _settle(WidgetTester t) async {
@@ -135,6 +137,7 @@ void main() {
         [
           BlocProvider<FavoritesBloc>.value(value: fakes.bloc()),
           BlocProvider<ProductBloc>.value(value: ProductBloc(getProductUseCase: _FakeGetProduct(_product))),
+          BlocProvider<RoutineBloc>(create: (_) => blocFor(FakeServer())),
         ],
       ));
       await _settle(t);

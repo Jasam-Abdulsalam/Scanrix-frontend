@@ -19,9 +19,18 @@ import 'package:scanrix_frontend/features/auth/presentation/bloc/auth_bloc.dart'
 import 'package:scanrix_frontend/features/auth/presentation/bloc/auth_event.dart';
 import 'package:scanrix_frontend/features/auth/presentation/bloc/auth_state.dart';
 
-const _signup = PendingGoogleSignup(idToken: 'google-id-token', email: 'me@gmail.com', displayName: 'Google Name');
+const _signup = PendingGoogleSignup(
+  idToken: 'google-id-token',
+  email: 'me@gmail.com',
+  displayName: 'Google Name',
+);
 const _token = AuthTokenEntity(accessToken: 'jwt', isNewUser: true);
-final _user = UserEntity(id: 'u1', email: 'me@gmail.com', name: 'Real Name', createdAt: DateTime.utc(2026, 10, 25));
+final _user = UserEntity(
+  id: 'u1',
+  email: 'me@gmail.com',
+  name: 'Real Name',
+  createdAt: DateTime.utc(2026, 10, 25),
+);
 
 /// Records requests; [postResult] answers every POST.
 class FakeApiClient implements ApiClient {
@@ -30,7 +39,11 @@ class FakeApiClient implements ApiClient {
   Object? postResult;
 
   @override
-  Future<dynamic> post(String path, {Object? data, Map<String, dynamic>? queryParameters}) async {
+  Future<dynamic> post(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
     posts.add((path, data));
     return postResult;
   }
@@ -42,7 +55,11 @@ class FakeApiClient implements ApiClient {
   Future<void> clearToken() async => tokens.add(null);
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError('${invocation.memberName}');
+  Stream<void> get sessionExpired => const Stream.empty();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class FakeGoogleLogin implements GoogleLoginUseCase {
@@ -112,20 +129,28 @@ class _Harness {
     );
   }
 
-  Future<AuthState> settle() =>
-      bloc.stream.firstWhere((s) => s is! AuthLoading).timeout(const Duration(seconds: 2));
+  Future<AuthState> settle() => bloc.stream
+      .firstWhere((s) => s is! AuthLoading)
+      .timeout(const Duration(seconds: 2));
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('a Google account with no Scanrix account asks for sign-up instead of logging in', () async {
-    final h = _Harness();
-    h.bloc.add(const AuthGoogleLoginRequested());
-    expect(await h.settle(), const AuthGoogleSignupRequired(_signup));
-    expect(h.signup.calls, isEmpty, reason: 'nothing may be created before Continue');
-    await h.bloc.close();
-  });
+  test(
+    'a Google account with no Scanrix account asks for sign-up instead of logging in',
+    () async {
+      final h = _Harness();
+      h.bloc.add(const AuthGoogleLoginRequested());
+      expect(await h.settle(), const AuthGoogleSignupRequired(_signup));
+      expect(
+        h.signup.calls,
+        isEmpty,
+        reason: 'nothing may be created before Continue',
+      );
+      await h.bloc.close();
+    },
+  );
 
   test('an existing account logs straight in', () async {
     final h = _Harness(login: const GoogleSignedIn(_token));
@@ -134,53 +159,98 @@ void main() {
     await h.bloc.close();
   });
 
-  test('Continue creates the account with the confirmed name and the Google photo', () async {
-    final h = _Harness();
-    h.bloc.add(const AuthGoogleSignupRequested(signup: _signup, name: 'Real Name', photoUrl: 'https://g/p.jpg'));
-    expect(await h.settle(), AuthProfileCompleteSuccess(_user));
-    final call = h.signup.calls.single;
-    expect((call.idToken, call.name, call.photoUrl), ('google-id-token', 'Real Name', 'https://g/p.jpg'));
-    expect(h.upload.uploads, isEmpty);
-    await h.bloc.close();
-  });
+  test(
+    'Continue creates the account with the confirmed name and the Google photo',
+    () async {
+      final h = _Harness();
+      h.bloc.add(
+        const AuthGoogleSignupRequested(
+          signup: _signup,
+          name: 'Real Name',
+          photoUrl: 'https://g/p.jpg',
+        ),
+      );
+      expect(await h.settle(), AuthProfileCompleteSuccess(_user));
+      final call = h.signup.calls.single;
+      expect(
+        (call.idToken, call.name, call.photoUrl),
+        ('google-id-token', 'Real Name', 'https://g/p.jpg'),
+      );
+      expect(h.upload.uploads, isEmpty);
+      await h.bloc.close();
+    },
+  );
 
-  test('a picked photo is uploaded after the account exists, not sent as a URL', () async {
-    final h = _Harness();
-    final file = File('picked.jpg');
-    h.bloc.add(AuthGoogleSignupRequested(signup: _signup, name: 'Real Name', photoUrl: 'https://g/p.jpg', photoFile: file));
-    expect(await h.settle(), AuthProfileCompleteSuccess(_user));
-    expect(h.signup.calls.single.photoUrl, isNull);
-    expect(h.upload.uploads, [file]);
-    await h.bloc.close();
-  });
+  test(
+    'a picked photo is uploaded after the account exists, not sent as a URL',
+    () async {
+      final h = _Harness();
+      final file = File('picked.jpg');
+      h.bloc.add(
+        AuthGoogleSignupRequested(
+          signup: _signup,
+          name: 'Real Name',
+          photoUrl: 'https://g/p.jpg',
+          photoFile: file,
+        ),
+      );
+      expect(await h.settle(), AuthProfileCompleteSuccess(_user));
+      expect(h.signup.calls.single.photoUrl, isNull);
+      expect(h.upload.uploads, [file]);
+      await h.bloc.close();
+    },
+  );
 
   test('a failed sign-up reports the error and uploads nothing', () async {
     final h = _Harness();
-    h.signup.error = const ServerException(message: 'Invalid Google ID token', statusCode: 401);
-    h.bloc.add(AuthGoogleSignupRequested(signup: _signup, name: 'Me', photoFile: File('picked.jpg')));
+    h.signup.error = const ServerException(
+      message: 'Invalid Google ID token',
+      statusCode: 401,
+    );
+    h.bloc.add(
+      AuthGoogleSignupRequested(
+        signup: _signup,
+        name: 'Me',
+        photoFile: File('picked.jpg'),
+      ),
+    );
     expect(await h.settle(), const AuthFailure('Invalid Google ID token'));
     expect(h.upload.uploads, isEmpty);
     await h.bloc.close();
   });
 
-  test('Back cancels: clears any token and ends signed out, creating nothing', () async {
-    final h = _Harness();
-    h.bloc.add(const AuthGoogleSignupCancelled());
-    expect(await h.settle(), isA<AuthUnauthenticated>());
-    expect(h.api.tokens, [null]);
-    expect(h.signup.calls, isEmpty);
-    await h.bloc.close();
-  });
+  test(
+    'Back cancels: clears any token and ends signed out, creating nothing',
+    () async {
+      final h = _Harness();
+      h.bloc.add(const AuthGoogleSignupCancelled());
+      expect(await h.settle(), isA<AuthUnauthenticated>());
+      expect(h.api.tokens, [null]);
+      expect(h.signup.calls, isEmpty);
+      await h.bloc.close();
+    },
+  );
 
-  test('GoogleSignupUseCase posts the confirmed profile and stores the token', () async {
-    final api = FakeApiClient()..postResult = {'access_token': 'jwt', 'token_type': 'bearer', 'is_new_user': true};
-    final token = await GoogleSignupUseCase(apiClient: api)(
-      const GoogleSignupParams(idToken: 'google-id-token', name: 'Real Name'),
-    );
-    expect(token.accessToken, 'jwt');
-    final (path, body) = api.posts.single;
-    expect(path, '/auth/google/signup');
-    expect(body, {'id_token': 'google-id-token', 'name': 'Real Name'}); // no photo_url key when there is none
-    expect(api.tokens, ['jwt']);
-  });
+  test(
+    'GoogleSignupUseCase posts the confirmed profile and stores the token',
+    () async {
+      final api = FakeApiClient()
+        ..postResult = {
+          'access_token': 'jwt',
+          'token_type': 'bearer',
+          'is_new_user': true,
+        };
+      final token = await GoogleSignupUseCase(apiClient: api)(
+        const GoogleSignupParams(idToken: 'google-id-token', name: 'Real Name'),
+      );
+      expect(token.accessToken, 'jwt');
+      final (path, body) = api.posts.single;
+      expect(path, '/auth/google/signup');
+      expect(body, {
+        'id_token': 'google-id-token',
+        'name': 'Real Name',
+      }); // no photo_url key when there is none
+      expect(api.tokens, ['jwt']);
+    },
+  );
 }

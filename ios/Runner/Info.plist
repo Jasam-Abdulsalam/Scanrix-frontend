@@ -24,6 +24,22 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Google Sign-In: the iOS client ID reversed. Google sends the user back to the app through this. -->
+				<string>com.googleusercontent.apps.849448109118-ug3d85g55fp0smbik885okr4ba7627p8</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Google Sign-In iOS OAuth client (bundle ID com.scanrix.scanrixFrontend.jasam).
+	     Must be in the same Google Cloud project as GoogleAuthConfig.webClientId. -->
+	<key>GIDClientID</key>
+	<string>849448109118-ug3d85g55fp0smbik885okr4ba7627p8.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>

@@ -24,6 +24,13 @@ import '../../features/history/presentation/bloc/scan_count_cubit.dart';
 import '../../features/alternatives/domain/usecases/get_alternatives_usecase.dart';
 import '../../features/alternatives/presentation/bloc/alternatives_bloc.dart';
 import '../../features/natural_remedy/domain/usecases/get_natural_remedy_usecase.dart';
+import '../../features/routine/domain/usecases/add_to_routine_usecase.dart';
+import '../../features/routine/domain/usecases/get_routine_usecase.dart';
+import '../../features/routine/domain/usecases/remove_from_routine_usecase.dart';
+import '../../features/routine/domain/usecases/reorder_routine_usecase.dart';
+import '../../features/routine/domain/usecases/set_routine_product_type_usecase.dart';
+import '../../features/routine/presentation/bloc/routine_bloc.dart';
+import '../../features/routine/reminders/reminder_scheduler.dart';
 import '../../features/natural_remedy/presentation/bloc/natural_remedy_bloc.dart';
 import '../../features/products/domain/usecases/analyze_with_ai_usecase.dart';
 import '../../features/products/domain/usecases/get_ai_credits_usecase.dart';
@@ -96,9 +103,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => DeleteAccountUseCase(apiClient: sl()));
 
   // ---------------- Products ----------------
-  sl.registerFactory(
-    () => ProductBloc(getProductUseCase: sl()),
-  );
+  sl.registerFactory(() => ProductBloc(getProductUseCase: sl()));
   sl.registerLazySingleton(() => GetProductUseCase(apiClient: sl()));
   // Opt-in "Get AI verdict": one bloc per result screen (factory), shared use cases.
   sl.registerFactory(
@@ -153,4 +158,23 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetFavoriteBarcodesUseCase(apiClient: sl()));
   sl.registerLazySingleton(() => AddFavoriteUseCase(apiClient: sl()));
   sl.registerLazySingleton(() => RemoveFavoriteUseCase(apiClient: sl()));
+
+  // ---------------- My Routine ----------------
+  // App-wide bloc (provided once in app.dart). Reminders: RemindersCubit is built in app.dart because it
+  // needs that same RoutineBloc instance; the scheduler (real phone notifications) is shared.
+  sl.registerFactory(
+    () => RoutineBloc(
+      getRoutineUseCase: sl(),
+      addToRoutineUseCase: sl(),
+      removeFromRoutineUseCase: sl(),
+      reorderRoutineUseCase: sl(),
+      setProductTypeUseCase: sl(),
+    ),
+  );
+  sl.registerLazySingleton(() => GetRoutineUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => AddToRoutineUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => RemoveFromRoutineUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => ReorderRoutineUseCase(apiClient: sl()));
+  sl.registerLazySingleton(() => SetRoutineProductTypeUseCase(apiClient: sl()));
+  sl.registerLazySingleton<ReminderScheduler>(() => LocalReminderScheduler());
 }

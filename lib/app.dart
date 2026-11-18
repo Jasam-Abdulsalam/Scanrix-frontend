@@ -10,6 +10,8 @@ import 'features/favorites/presentation/bloc/favorites_bloc.dart';
 import 'features/history/presentation/bloc/history_bloc.dart';
 import 'features/history/presentation/bloc/scan_count_cubit.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
+import 'features/routine/presentation/bloc/routine_bloc.dart';
+import 'features/routine/reminders/reminders_cubit.dart';
 import 'features/scan/presentation/bloc/scan_bloc.dart';
 
 /// Reference design size every `.w`/`.h`/`.sp`/`.r` scales against — see
@@ -35,6 +37,12 @@ class ScanrixApp extends StatelessWidget {
         BlocProvider<HistoryBloc>(create: (_) => sl<HistoryBloc>()),
         BlocProvider<ScanCountCubit>(create: (_) => sl<ScanCountCubit>()),
         BlocProvider<FavoritesBloc>(create: (_) => sl<FavoritesBloc>()),
+        BlocProvider<RoutineBloc>(create: (_) => sl<RoutineBloc>()),
+        // Lazy on purpose: its scheduler is registered by init(), which the splash page runs AFTER this
+        // first frame. MainShell (only reached after init) creates it before loading the routine.
+        BlocProvider<RemindersCubit>(
+          create: (context) => RemindersCubit(scheduler: sl(), routineBloc: context.read<RoutineBloc>())..load(),
+        ),
       ],
       child: ScreenUtilInit(
         designSize: _designSize,
