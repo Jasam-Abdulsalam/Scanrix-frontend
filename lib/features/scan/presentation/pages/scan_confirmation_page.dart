@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/widgets/network_photo.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../products/domain/entities/product_entity.dart';
@@ -138,30 +139,19 @@ class _ProductImage extends StatelessWidget {
                     frameBuilder: (context, child, frame, wasSync) =>
                         fadeIn(child, frame, wasSync),
                   )
-                : Image.network(
-                    imageUrl!,
-                    fit: BoxFit.cover,
-                    frameBuilder: (context, child, frame, wasSync) =>
-                        fadeIn(child, frame, wasSync),
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return Center(
-                        child: SizedBox(
-                          width: 28.r,
-                          height: 28.r,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            valueColor: AlwaysStoppedAnimation<Color>(colors.neonEmerald),
-                            value: progress.expectedTotalBytes != null
-                                ? progress.cumulativeBytesLoaded /
-                                    progress.expectedTotalBytes!
-                                : null,
-                          ),
+                : NetworkPhoto(
+                    url: imageUrl,
+                    placeholder: Center(
+                      child: SizedBox(
+                        width: 28.r,
+                        height: 28.r,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          valueColor: AlwaysStoppedAnimation<Color>(colors.neonEmerald),
                         ),
-                      );
-                    },
-                    errorBuilder: (context, error, stack) =>
-                        Image.asset(fallbackAsset, fit: BoxFit.cover),
+                      ),
+                    ),
+                    error: Image.asset(fallbackAsset, fit: BoxFit.cover),
                   ),
           ),
         ),

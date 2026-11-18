@@ -10,6 +10,9 @@ class QuickActionCard extends StatelessWidget {
   final String? imageAsset;
   final VoidCallback? onTap;
 
+  /// Optional content at the top left, beside the chevron (e.g. product thumbnails).
+  final Widget? leading;
+
   const QuickActionCard({
     super.key,
      this.icon,
@@ -17,6 +20,7 @@ class QuickActionCard extends StatelessWidget {
     required this.subtitle,
     this.imageAsset,
     this.onTap,
+    this.leading,
   });
 
   @override
@@ -76,8 +80,12 @@ class QuickActionCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  // Fixed height so cards side by side line up with or without [leading].
+                  SizedBox(
+                    height: 24.r,
+                    child: Row(
                     children: [
+                      if (leading != null) leading!,
                       // Container(
                       //   width: 36.r,
                       //   height: 36.r,
@@ -100,6 +108,7 @@ class QuickActionCard extends StatelessWidget {
                         size: 18.r,
                       ),
                     ],
+                  ),
                   ),
                   SizedBox(height: 12.h),
                   Text(

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/aurora_background.dart';
+import '../../../../core/widgets/bottom_nav_bar.dart';
 import '../../../../core/widgets/toast.dart';
 import '../../../products/presentation/pages/product_detail_page.dart';
 import '../bloc/history_bloc.dart';
@@ -59,7 +60,7 @@ class _HistoryPageState extends State<HistoryPage> {
               // As a tab the floating nav bar overlays the bottom: end the list
               // above it instead of letting rows scroll underneath.
               child: Padding(
-                padding: EdgeInsets.only(bottom: widget.standalone ? 0 : _navReserve(context)),
+                padding: EdgeInsets.only(bottom: widget.standalone ? 0 : navBarReserve(context)),
                 child: _FadeBottom(child: _Content(state: state)),
               ),
             ),
@@ -71,10 +72,6 @@ class _HistoryPageState extends State<HistoryPage> {
     return Scaffold(backgroundColor: Colors.transparent, body: AuroraBackground(child: body));
   }
 }
-
-/// Room the floating `BottomNavBar` takes: its 78 + 12 padding, the scan
-/// button that pokes above it, and the system bottom inset.
-double _navReserve(BuildContext context) => 92.h + MediaQuery.paddingOf(context).bottom;
 
 /// Soft fade on the list's bottom edge so rows dissolve instead of being cut off.
 class _FadeBottom extends StatelessWidget {

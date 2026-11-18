@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -7,7 +8,11 @@ import '../../../../core/navigation/bottom_nav_navigation.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/quick_action_card.dart';
-import '../../../routine/presentation/pages/routine_page.dart';
+import '../../../routine/domain/entities/routine_entity.dart';
+import '../../../routine/presentation/bloc/routine_bloc.dart';
+import '../../../routine/presentation/bloc/routine_state.dart';
+import '../../../routine/presentation/widgets/routine_thumb_stack.dart';
+import '../../../routine/reminders/reminders_cubit.dart';
 import '../../../favorites/presentation/pages/favorites_page.dart';
 
 /// Home tab content — rendered inside `MainShell`'s `IndexedStack`, which
@@ -19,7 +24,14 @@ class HomePage extends StatelessWidget {
   /// image, instead of only ever doing that once at app startup.
   final ValueListenable<int> activeTabIndex;
 
-  const HomePage({super.key, required this.activeTabIndex});
+  /// Opens the Routine tab on a slot (owned by `MainShell`).
+  final ValueChanged<RoutineSlot> onOpenRoutine;
+
+  const HomePage({
+    super.key,
+    required this.activeTabIndex,
+    required this.onOpenRoutine,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -43,14 +55,7 @@ class HomePage extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: QuickActionCard(
-                          title: 'My Routine',
-                          subtitle: 'Daily products',
-                          imageAsset: 'assets/images/routine.png',
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const RoutinePage()),
-                          ),
-                        ),
+                        child: _TodayRoutineCard(onOpen: onOpenRoutine),
                       ),
                       SizedBox(width: 14.w),
                       Expanded(
@@ -72,6 +77,43 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Preview of the routine for now (morning before 3 pm, evening after): its first products, step
+/// count and reminder time. Tapping opens the Routine tab on that slot, where the routine is managed.
+class _TodayRoutineCard extends StatelessWidget {
+  final ValueChanged<RoutineSlot> onOpen;
+
+  const _TodayRoutineCard({required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final slot = RoutineSlot.forTime(DateTime.now());
+    final routine = context.select((RoutineBloc b) => b.state);
+    final reminders = context.watch<RemindersCubit>().state;
+    final items = routine.routine.slot(slot);
+    final steps = items.length;
+
+    final String subtitle;
+    if (steps == 0 && routine.status != RoutineStatus.loaded) {
+      subtitle = 'Daily products';
+    } else if (steps == 0) {
+      subtitle = 'No steps yet';
+    } else {
+      final count = steps == 1 ? '1 step' : '$steps steps';
+      subtitle = reminders.enabled
+          ? '$count · ${MaterialLocalizations.of(context).formatTimeOfDay(reminders.timeFor(slot))}'
+          : count;
+    }
+
+    return QuickActionCard(
+      title: '${slot.label} routine',
+      subtitle: subtitle,
+      imageAsset: 'assets/images/routine.png',
+      leading: RoutineThumbStack(items: items),
+      onTap: () => onOpen(slot),
     );
   }
 }

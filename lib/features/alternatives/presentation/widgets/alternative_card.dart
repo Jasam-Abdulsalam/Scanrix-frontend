@@ -3,6 +3,7 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/widgets/network_photo.dart';
 import '../../domain/entities/alternative_product_entity.dart';
 import 'alternative_style.dart';
 
@@ -71,13 +72,12 @@ class _CardPhoto extends StatelessWidget {
     final icon = Center(child: Icon(Icons.inventory_2_outlined, color: _ink.withValues(alpha: 0.35), size: 46.r));
     if (url == null) return icon;
     return LayoutBuilder(
-      builder: (context, box) => Image.network(
-        url!,
+      builder: (context, box) => NetworkPhoto(
+        url: url,
         fit: BoxFit.contain,
         // Decode at display size, not the shop's 2000 px original.
-        cacheHeight: (box.maxHeight * MediaQuery.devicePixelRatioOf(context)).round(),
-        errorBuilder: (_, _, _) => icon,
-        loadingBuilder: (_, child, progress) => progress == null ? child : icon,
+        memCacheHeight: (box.maxHeight * MediaQuery.devicePixelRatioOf(context)).round(),
+        placeholder: icon,
       ),
     );
   }
@@ -321,13 +321,13 @@ class AltThumb extends StatelessWidget {
       ),
       child: url == null
           ? icon
-          : Image.network(
-              url!,
+          : NetworkPhoto(
+              url: url,
               fit: BoxFit.contain,
               // Decode at display size, not the shop's 2000 px original.
-              cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
-              errorBuilder: (_, _, _) => icon,
-              loadingBuilder: (_, child, progress) => progress == null ? child : Center(child: icon),
+              memCacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+              placeholder: Center(child: icon),
+              error: icon,
             ),
     );
   }

@@ -16,11 +16,13 @@ import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/routine/presentation/bloc/routine_bloc.dart';
 import '../../features/routine/presentation/bloc/routine_event.dart';
 import '../../features/routine/reminders/reminders_cubit.dart';
-import '../../features/search/presentation/pages/search_page.dart';
+import '../../features/routine/domain/entities/routine_entity.dart';
+import '../../features/routine/presentation/pages/routine_page.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'bottom_nav_navigation.dart';
 import 'signed_out.dart';
+import 'tab_scope.dart';
 
 /// Top-level tab shell: the single owner of the Scaffold, aurora
 /// background, and [BottomNavBar] shared by the four tabs. Keeps all four
@@ -49,6 +51,9 @@ class _MainShellState extends State<MainShell> {
   // rebuild-from-scratch is exactly what IndexedStack exists to avoid.
   late final ValueNotifier<int> _navIndexNotifier;
 
+  // Slot the Routine tab shows. Owned here so Home's "Today" card can open the tab on it.
+  final _routineSlot = ValueNotifier(RoutineSlot.forTime(DateTime.now()));
+
   // Built once and kept alive for the shell's lifetime — IndexedStack only
   // preserves each child's state across index switches while the same
   // widget instances stay in the tree. Not `const` since HomePage needs
@@ -66,9 +71,9 @@ class _MainShellState extends State<MainShell> {
     context.read<RoutineBloc>().add(const RoutineRequested(silent: true));
     _navIndexNotifier = ValueNotifier(_navIndex);
     _tabs = [
-      HomePage(activeTabIndex: _navIndexNotifier),
+      HomePage(activeTabIndex: _navIndexNotifier, onOpenRoutine: _openRoutine),
       const HistoryPage(),
-      const SearchPage(),
+      RoutinePage(slot: _routineSlot),
       const ProfilePage(),
     ];
   }
@@ -76,7 +81,14 @@ class _MainShellState extends State<MainShell> {
   @override
   void dispose() {
     _navIndexNotifier.dispose();
+    _routineSlot.dispose();
     super.dispose();
+  }
+
+  /// Home's "Today" card: the Routine tab on [slot].
+  void _openRoutine(RoutineSlot slot) {
+    _routineSlot.value = slot;
+    _selectTab(3);
   }
 
   // BottomNavBar indices (0/1/3/4) -> position in `_tabs`.
@@ -87,6 +99,25 @@ class _MainShellState extends State<MainShell> {
     4 => 3,
     _ => 0,
   };
+
+  void _selectTab(int index) {
+    setState(() => _navIndex = index);
+    _navIndexNotifier.value = index;
+    // The tabs stay alive in the IndexedStack, so their data can be stale
+    // (e.g. after a scan): refresh the selected one.
+    if (index == 4) {
+      context.read<ScanCountCubit>().refresh();
+      context.read<FavoritesBloc>().add(const FavoritesBarcodesRequested());
+    }
+    if (index == 1) {
+      context.read<HistoryBloc>().add(
+        HistoryRequested(limit: productListPageSize(context), silent: true),
+      );
+    }
+    if (index == 3) {
+      context.read<RoutineBloc>().add(const RoutineRequested(silent: true));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +142,13 @@ class _MainShellState extends State<MainShell> {
           child: Stack(
             children: [
               Positioned.fill(
-                child: IndexedStack(index: _tabIndex, children: _tabs),
+                child: IndexedStack(
+                  index: _tabIndex,
+                  children: [
+                    for (var i = 0; i < _tabs.length; i++)
+                      TabScope(active: i == _tabIndex, child: _tabs[i]),
+                  ],
+                ),
               ),
               Positioned(
                 left: 0,
@@ -121,26 +158,7 @@ class _MainShellState extends State<MainShell> {
                   top: false,
                   child: BottomNavBar(
                     currentIndex: _navIndex,
-                    onTap: (index) {
-                      setState(() => _navIndex = index);
-                      _navIndexNotifier.value = index;
-                      // The tabs stay alive in the IndexedStack, so the list
-                      // would be stale after a scan: refresh when History is selected.
-                      if (index == 4) {
-                        context.read<ScanCountCubit>().refresh();
-                        context.read<FavoritesBloc>().add(
-                          const FavoritesBarcodesRequested(),
-                        );
-                      }
-                      if (index == 1) {
-                        context.read<HistoryBloc>().add(
-                          HistoryRequested(
-                            limit: productListPageSize(context),
-                            silent: true,
-                          ),
-                        );
-                      }
-                    },
+                    onTap: _selectTab,
                     onScanPressed: () => handleScanPressed(context),
                   ),
                 ),

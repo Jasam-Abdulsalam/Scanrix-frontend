@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/widgets/network_photo.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/glass_card.dart';
@@ -89,7 +90,7 @@ class _Thumb extends StatelessWidget {
         alignment: Alignment.center,
         child: url == null
             ? placeholder
-            : Image.network(url!, width: 62.r, height: 62.r, fit: BoxFit.cover, errorBuilder: (_, _, _) => placeholder),
+            : NetworkPhoto(url: url, width: 62.r, height: 62.r, placeholder: placeholder),
       ),
     );
   }

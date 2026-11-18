@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/widgets/network_photo.dart';
 import '../../../../core/theme/app_theme_colors.dart';
 import '../../../../core/widgets/bold_card.dart';
 import '../../../../core/widgets/toast.dart';
@@ -516,18 +517,17 @@ class _ProductImage extends StatelessWidget {
         alignment: Alignment.center,
         child: imageUrl == null
             ? placeholder
-            : Image.network(
-                imageUrl!,
+            : NetworkPhoto(
+                url: imageUrl,
                 width: size,
                 height: size,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) => progress == null
-                    ? child
-                    : SizedBox.square(
-                        dimension: 20.r,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: boldAccent(context)),
-                      ),
-                errorBuilder: (_, _, _) => placeholder,
+                placeholder: Center(
+                  child: SizedBox.square(
+                    dimension: 20.r,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: boldAccent(context)),
+                  ),
+                ),
+                error: placeholder,
               ),
       ),
     );

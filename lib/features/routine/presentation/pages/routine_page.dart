@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/navigation/tab_scope.dart';
 import '../../../../core/theme/app_theme_colors.dart';
+import '../../../../core/widgets/bottom_nav_bar.dart';
 import '../../../../core/widgets/bold_card.dart';
 import '../../../../core/widgets/toast.dart';
 import '../../../products/presentation/pages/product_detail_page.dart';
@@ -14,64 +16,68 @@ import '../bloc/routine_bloc.dart';
 import '../bloc/routine_event.dart';
 import '../bloc/routine_state.dart';
 
-/// My Routine: the morning and evening steps (drag to reorder, swipe left to remove, tap to open), plus
+/// My Routine tab: the morning and evening steps (drag to reorder, swipe left to remove, tap to open), plus
 /// this slot's reminder. Uses the app-wide [RoutineBloc] and [RemindersCubit].
-class RoutinePage extends StatefulWidget {
-  const RoutinePage({super.key});
+///
+/// Lives in `MainShell`'s `IndexedStack` (no Scaffold of its own). [slot] is owned by the shell so
+/// Home's "Today" card can open the tab on the current slot; `MainShell` reloads the routine when
+/// the tab is selected.
+class RoutinePage extends StatelessWidget {
+  final ValueNotifier<RoutineSlot> slot;
 
-  @override
-  State<RoutinePage> createState() => _RoutinePageState();
-}
-
-class _RoutinePageState extends State<RoutinePage> {
-  RoutineSlot _slot = RoutineSlot.forTime(DateTime.now());
-
-  @override
-  void initState() {
-    super.initState();
-    context.read<RoutineBloc>().add(const RoutineRequested(silent: true));
-  }
+  const RoutinePage({super.key, required this.slot});
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     return MultiBlocListener(
       listeners: [
         BlocListener<RoutineBloc, RoutineState>(
           listenWhen: (a, b) => b.notice != null && a.notice != b.notice,
           listener: (context, s) {
-            if (ModalRoute.of(context)?.isCurrent ?? true)
+            if (canShowToastHere(context)) {
               showToast(context, s.notice!, icon: Icons.error_outline_rounded);
+            }
           },
         ),
         BlocListener<RemindersCubit, RemindersState>(
           listenWhen: (a, b) => b.notice != null && a.notice != b.notice,
-          listener: (context, s) => showToast(
-            context,
-            s.notice!,
-            icon: Icons.notifications_off_outlined,
-          ),
+          listener: (context, s) {
+            if (canShowToastHere(context)) {
+              showToast(
+                context,
+                s.notice!,
+                icon: Icons.notifications_off_outlined,
+              );
+            }
+          },
         ),
       ],
-      child: Scaffold(
-        backgroundColor: colors.background,
-        body: SafeArea(
-          child: Column(
+      child: SafeArea(
+        bottom: false,
+        child: ValueListenableBuilder<RoutineSlot>(
+          valueListenable: slot,
+          builder: (context, current, _) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const _Header(),
               Padding(
-                padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 0),
+                padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
                 child: _SlotSwitch(
-                  slot: _slot,
-                  onChanged: (s) => setState(() => _slot = s),
+                  slot: current,
+                  onChanged: (s) => slot.value = s,
                 ),
               ),
               Padding(
                 padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 4.h),
-                child: _ReminderCard(slot: _slot),
+                child: _ReminderCard(slot: current),
               ),
-              Expanded(child: _Steps(slot: _slot)),
+              Expanded(
+                // The floating nav bar overlays the bottom: end the list above it.
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: navBarReserve(context)),
+                  child: _Steps(slot: current),
+                ),
+              ),
             ],
           ),
         ),
@@ -85,33 +91,15 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
-      child: Row(
-        children: [
-          Pressable(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              Navigator.of(context).maybePop();
-            },
-            child: CircleIcon(
-              icon: Icons.arrow_back_ios_new_rounded,
-              background: boldCardFill(colors),
-              foreground: Colors.white,
-              size: 42.r,
-            ),
-          ),
-          SizedBox(width: 14.w),
-          Text(
-            'My Routine',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20.sp,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
+      padding: EdgeInsets.fromLTRB(20.w, 12.h, 12.w, 8.h),
+      child: Text(
+        'My Routine',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 26.sp,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -169,12 +157,16 @@ class _SlotSwitch extends StatelessWidget {
                           color: s == slot ? kOnAccent : colors.secondaryText,
                         ),
                         SizedBox(width: 6.w),
-                        Text(
-                          '${s.label} · ${routine.slot(s).length}',
-                          style: TextStyle(
-                            color: s == slot ? kOnAccent : Colors.white,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w700,
+                        Flexible(
+                          child: Text(
+                            '${s.label} · ${routine.slot(s).length}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: s == slot ? kOnAccent : Colors.white,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],

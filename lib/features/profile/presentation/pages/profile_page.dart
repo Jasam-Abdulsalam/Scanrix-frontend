@@ -22,6 +22,7 @@ import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../auth/presentation/pages/create_account_page.dart';
 import '../../../routine/reminders/reminders_cubit.dart';
+import '../../../../core/navigation/tab_scope.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -199,7 +200,7 @@ class _ProfilePageState extends State<ProfilePage> {
         BlocConsumer<RemindersCubit, RemindersState>(
           listenWhen: (a, b) => b.notice != null && a.notice != b.notice,
           listener: (context, s) {
-            if (ModalRoute.of(context)?.isCurrent ?? true) {
+            if (canShowToastHere(context)) {
               showToast(
                 context,
                 s.notice!,

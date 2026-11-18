@@ -7,7 +7,11 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme_colors.dart';
 import 'floating_scan_button.dart';
 
-/// Floating glassmorphic bottom nav (Home/History/Scan/Search/Profile) with
+/// Room the floating [BottomNavBar] takes at the bottom of a tab: its 78 + 12 padding, the scan
+/// button that pokes above it, and the system bottom inset. Tabs end their lists above it.
+double navBarReserve(BuildContext context) => 92.h + MediaQuery.paddingOf(context).bottom;
+
+/// Floating glassmorphic bottom nav (Home/History/Scan/Routine/Profile) with
 /// a [FloatingScanButton] centered above it. [onTap]/[onScanPressed] are
 /// nullable so this can be dropped in as static UI before navigation exists.
 class BottomNavBar extends StatelessWidget {
@@ -78,8 +82,8 @@ class BottomNavBar extends StatelessWidget {
                         SizedBox(width: 64.r),
                         Expanded(
                           child: _NavItem(
-                            icon: Icons.search_rounded,
-                            label: 'Search',
+                            icon: Icons.spa_rounded,
+                            label: 'Routine',
                             selected: currentIndex == 3,
                             onTap: () => onTap?.call(3),
                           ),
